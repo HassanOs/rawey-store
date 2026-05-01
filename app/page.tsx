@@ -35,8 +35,8 @@ export default async function HomePage() {
         </div>
         <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-rawey-line bg-white shadow-soft">
           <Image
-            src="https://images.unsplash.com/photo-1595425964071-2c1ec7c5d59d?q=80&w=1400&auto=format&fit=crop"
-            alt="Perfume testers"
+            src="/images/Mockup-White.png"
+            alt="Rawey perfume tester mockup"
             fill
             priority
             sizes="(min-width: 1024px) 520px, 100vw"
