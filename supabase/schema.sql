@@ -9,6 +9,13 @@ create table if not exists public.products (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'user' check (role in ('admin', 'user')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.product_variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
@@ -104,6 +111,7 @@ create index if not exists orders_created_at_idx on public.orders (created_at de
 create index if not exists order_items_order_id_idx on public.order_items (order_id);
 
 alter table public.products enable row level security;
+alter table public.profiles enable row level security;
 alter table public.product_variants enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
@@ -112,6 +120,13 @@ alter table public.settings enable row level security;
 create policy "Public products are readable"
 on public.products for select
 using (true);
+
+drop policy if exists "Users can read their own profile"
+on public.profiles;
+
+create policy "Users can read their own profile"
+on public.profiles for select
+using (auth.uid() = id);
 
 create policy "Public variants are readable"
 on public.product_variants for select

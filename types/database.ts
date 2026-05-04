@@ -23,6 +23,22 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["products"]["Insert"]>;
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          id: string;
+          role: "admin" | "user";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          role?: "admin" | "user";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
       product_variants: {
         Row: {
           id: string;
@@ -142,6 +158,7 @@ export type Database = {
 };
 
 export type Product = Database["public"]["Tables"]["products"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type ProductVariant = Database["public"]["Tables"]["product_variants"]["Row"];
 export type Order = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"];
