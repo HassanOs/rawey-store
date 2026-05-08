@@ -5,7 +5,7 @@ import { Plus, Trash2, Upload, Loader } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Input, Textarea } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
-import { ALLOWED_PRODUCT_SIZES, isAllowedProductSize } from "@/lib/product-variants";
+import { ALLOWED_PRODUCT_SIZES, getProductSizeLabel, isAllowedProductSize } from "@/lib/product-variants";
 import { uploadProductImage } from "@/lib/utils/image-upload";
 import type { ProductWithVariants } from "@/types/database";
 
@@ -130,7 +130,7 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
               <Select name="size_ml" defaultValue={String(variant.size_ml)} required>
                 {ALLOWED_PRODUCT_SIZES.map((size) => (
                   <option key={size} value={size}>
-                    {size}ml
+                    {getProductSizeLabel(size)}
                   </option>
                 ))}
               </Select>

@@ -6,7 +6,7 @@ import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { QuantitySelector } from "@/components/molecules/quantity-selector";
-import { isAllowedProductSize } from "@/lib/product-variants";
+import { getProductSizeLabel, isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { getCartSubtotal, useCartStore } from "@/store/cart-store";
 
@@ -48,7 +48,7 @@ export function CartList({ shippingPrice }: { shippingPrice: number }) {
                 {item.name}
               </Link>
               <p className="mt-1 text-sm text-rawey-muted">
-                {item.brand} - {item.sizeMl}ml
+                {item.brand} - {getProductSizeLabel(item.sizeMl)}
               </p>
               <p className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</p>
               <div className="mt-4 flex flex-wrap items-center gap-3">

@@ -3,7 +3,7 @@
 import { checkoutSchema } from "@/lib/validations";
 import { createServerClient } from "@/lib/supabase/server";
 import { getShippingPrice } from "@/lib/data/settings";
-import { isAllowedProductSize } from "@/lib/product-variants";
+import { getProductSizeLabel, isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import type { CartItem } from "@/types/cart";
 
@@ -41,7 +41,7 @@ function buildWhatsAppUrl(args: {
   }
 
   const productsList = args.items
-    .map((item) => `- ${item.name} ${item.sizeMl}مل × ${item.quantity} - ${formatPrice(item.price * item.quantity)}`)
+    .map((item) => `- ${item.name} ${getProductSizeLabel(item.sizeMl)} × ${item.quantity} - ${formatPrice(item.price * item.quantity)}`)
     .join("\n");
   const paymentMethod = args.paymentMethod === "WISH" ? "تحويل ويش موني" : "الدفع عند الاستلام";
   const message = [

@@ -21,7 +21,8 @@ import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
 import { AdminProductForm } from "@/components/organisms/admin-product-form";
-import { formatPrice } from "@/lib/utils";
+import { getProductSizeLabel } from "@/lib/product-variants";
+import { formatDate, formatPrice } from "@/lib/utils";
 import type { OrderWithItems, ProductWithVariants } from "@/types/database";
 import {
   createProduct,
@@ -136,7 +137,7 @@ export function AdminDashboard({ products, orders, stats, shippingPrice }: Admin
                 <div key={order.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <div>
                     <p className="font-semibold">{order.full_name || "طلب بدون اسم"}</p>
-                    <p className="text-xs text-rawey-muted">#{shortId(order.id)} - {new Date(order.created_at).toLocaleDateString("ar-LB")}</p>
+                    <p className="text-xs text-rawey-muted">#{shortId(order.id)} - {formatDate(order.created_at)}</p>
                   </div>
                   <div className="text-left">
                     <StatusBadge status={order.status} />
@@ -270,7 +271,7 @@ function OrdersTable({ orders }: { orders: OrderWithItems[] }) {
                 <div className="rounded-xl bg-white p-3">
                   {order.items.map((item) => (
                     <p key={item.id}>
-                      {item.product?.name || "منتج"} - {item.variant?.size_ml || "-"}ml x {item.quantity}
+                      {item.product?.name || "منتج"} - {item.variant ? getProductSizeLabel(item.variant.size_ml) : "-"} x {item.quantity}
                     </p>
                   ))}
                 </div>
