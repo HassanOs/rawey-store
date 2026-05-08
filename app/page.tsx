@@ -54,7 +54,7 @@ export default async function HomePage() {
             عرض الكل
           </Link>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid max-h-[52rem] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:max-h-none sm:gap-5 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-4">
           {featured.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
