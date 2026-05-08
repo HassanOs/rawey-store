@@ -13,7 +13,8 @@ export function Footer() {
         <section>
           <h2 className="text-sm font-bold text-rawey-text">من نحن</h2>
           <p className="mt-2 leading-7">
-            متجر مختص في بيع التقاسيم والعطور البراندات الاصلية. (Decants). توصيل لكل لبنان.
+            متجر مختص في بيع تقسيمات العطور الاصلية. <br />
+            توصيل لجميع المناطق اللبنانية. <br />
           </p>
         </section>
 
