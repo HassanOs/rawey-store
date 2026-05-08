@@ -40,17 +40,25 @@ function buildWhatsAppUrl(args: {
     return undefined;
   }
 
-  const itemsSummary = args.items
-    .map((item) => `${item.name} ${item.sizeMl}مل × ${item.quantity} - ${formatPrice(item.price * item.quantity)}`)
-    .join("، ");
+  const productsList = args.items
+    .map((item) => `- ${item.name} ${item.sizeMl}مل × ${item.quantity} - ${formatPrice(item.price * item.quantity)}`)
+    .join("\n");
   const paymentMethod = args.paymentMethod === "WISH" ? "تحويل ويش موني" : "الدفع عند الاستلام";
   const message = [
-    "طلب جديد من روي",
-    `رقم الطلب: ${args.orderId}`,
-    `المنتجات: ${itemsSummary}`,
-    `المجموع: ${formatPrice(args.totalPrice)}`,
-    `العنوان: ${args.deliveryAddress}`,
-    `طريقة الدفع: ${paymentMethod}`
+    "✨ طلب جديد من رَوِيّ",
+    "",
+    `🧾 رقم الطلب: ${args.orderId}`,
+    "",
+    "🛍️ المنتجات:",
+    productsList,
+    "",
+    `💰 المجموع النهائي: ${formatPrice(args.totalPrice)}`,
+    "",
+    `📍 العنوان: ${args.deliveryAddress}`,
+    "",
+    `💳 طريقة الدفع: ${paymentMethod}`,
+    "",
+    "شكرًا لاختياركم رَوِيّ!"
   ].join("\n");
 
   return `https://wa.me/${shopPhone}?text=${encodeURIComponent(message)}`;
