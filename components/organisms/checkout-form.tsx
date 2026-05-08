@@ -10,6 +10,7 @@ import { Input, Textarea } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
 import { createOrder } from "@/app/actions/checkout";
 import { checkoutSchema, governorates, type CheckoutValues } from "@/lib/validations";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { getCartSubtotal, useCartStore } from "@/store/cart-store";
 
@@ -25,7 +26,8 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
   const [message, setMessage] = useState("");
   const [mounted, setMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const subtotal = getCartSubtotal(items);
+  const visibleItems = items.filter((item) => isAllowedProductSize(item.sizeMl));
+  const subtotal = getCartSubtotal(visibleItems);
   const total = subtotal + shippingPrice;
 
   const {
@@ -53,7 +55,7 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
     setIsProcessing(true);
 
     try {
-      const result = await createOrder(values, items);
+      const result = await createOrder(values, visibleItems);
       setMessage(result.message);
 
       if (!result.ok) {
@@ -79,7 +81,7 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
     return <div className="h-64 animate-pulse rounded-[2rem] border border-rawey-line bg-white shadow-sm" />;
   }
 
-  if (!items.length) {
+  if (!visibleItems.length) {
     return (
       <div dir="rtl" className="rounded-[2rem] border border-rawey-line bg-white p-10 text-center shadow-sm">
         <h1 className="text-2xl font-semibold">لا يوجد طلب لإكماله</h1>
@@ -185,7 +187,7 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
       <aside className="h-fit rounded-[2rem] border border-rawey-line bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">ملخص الطلب</h2>
         <div className="mt-5 space-y-3 text-sm">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <div key={item.variantId} className="flex justify-between gap-4">
               <span className="text-rawey-muted">
                 {item.name} × {item.quantity}

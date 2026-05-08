@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createHash } from "crypto";
 import { productFormSchema } from "@/lib/validations";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import { createServerClient } from "@/lib/supabase/server";
 import { SETTINGS_ID } from "@/lib/data/settings";
 
@@ -64,7 +65,7 @@ function parseProductForm(formData: FormData) {
         size_ml: size,
         price: prices[index]
       }))
-      .filter((variant) => variant.size_ml && variant.price)
+      .filter((variant) => isAllowedProductSize(Number(variant.size_ml)) && variant.price)
   });
 }
 
@@ -130,15 +131,17 @@ export async function updateProduct(productId: string, formData: FormData) {
     throw new Error(error.message);
   }
 
+  await supabase.from("product_variants").delete().eq("product_id", productId).eq("size_ml", 1);
+
   const existingIds = product.variants.map((variant) => variant.id).filter(Boolean) as string[];
   if (existingIds.length) {
-    const { data: current } = await supabase.from("product_variants").select("id").eq("product_id", productId);
+    const { data: current } = await supabase.from("product_variants").select("id").eq("product_id", productId).neq("size_ml", 1);
     const staleIds = (current || []).map((variant) => variant.id).filter((id) => !existingIds.includes(id));
     if (staleIds.length) {
       await supabase.from("product_variants").delete().in("id", staleIds);
     }
   } else {
-    await supabase.from("product_variants").delete().eq("product_id", productId);
+    await supabase.from("product_variants").delete().eq("product_id", productId).neq("size_ml", 1);
   }
 
   for (const variant of product.variants) {
@@ -159,6 +162,26 @@ export async function deleteProduct(productId: string) {
   await assertAdmin();
   const supabase = createServerClient();
   const { error } = await supabase.from("products").delete().eq("id", productId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath("/admin");
+}
+
+export async function deleteProducts(formData: FormData) {
+  await assertAdmin();
+  const productIds = formData.getAll("product_id").map(String).filter(Boolean);
+
+  if (!productIds.length) {
+    return;
+  }
+
+  const supabase = createServerClient();
+  const { error } = await supabase.from("products").delete().in("id", productIds);
 
   if (error) {
     throw new Error(error.message);

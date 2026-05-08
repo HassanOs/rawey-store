@@ -19,10 +19,15 @@ create table if not exists public.profiles (
 create table if not exists public.product_variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
-  size_ml integer not null check (size_ml in (1, 3, 5, 10)),
+  size_ml integer not null check (size_ml in (3, 5, 10)),
   price numeric(10, 2) not null check (price > 0),
   unique (product_id, size_ml)
 );
+
+delete from public.product_variants where size_ml = 1;
+
+alter table public.product_variants drop constraint if exists product_variants_size_ml_check;
+alter table public.product_variants add constraint product_variants_size_ml_check check (size_ml in (3, 5, 10));
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),

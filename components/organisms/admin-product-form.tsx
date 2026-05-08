@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Plus, Trash2, Upload, Loader } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Input, Textarea } from "@/components/atoms/input";
+import { Select } from "@/components/atoms/select";
+import { ALLOWED_PRODUCT_SIZES, isAllowedProductSize } from "@/lib/product-variants";
 import { uploadProductImage } from "@/lib/utils/image-upload";
 import type { ProductWithVariants } from "@/types/database";
 
@@ -12,7 +14,7 @@ type AdminProductFormProps = {
   action: (formData: FormData) => void | Promise<void>;
 };
 
-const defaultVariants = [1, 3, 5, 10].map((size) => ({
+const defaultVariants = ALLOWED_PRODUCT_SIZES.map((size) => ({
   id: "",
   size_ml: size,
   price: ""
@@ -20,11 +22,13 @@ const defaultVariants = [1, 3, 5, 10].map((size) => ({
 
 export function AdminProductForm({ product, action }: AdminProductFormProps) {
   const [variants, setVariants] = useState(
-    product?.variants.map((variant) => ({
-      id: variant.id,
-      size_ml: variant.size_ml,
-      price: String(variant.price)
-    })) || defaultVariants
+    product?.variants
+      .filter((variant) => isAllowedProductSize(variant.size_ml))
+      .map((variant) => ({
+        id: variant.id,
+        size_ml: variant.size_ml,
+        price: String(variant.price)
+      })) || defaultVariants
   );
   const [imageUrl, setImageUrl] = useState(product?.image_url || "");
   const [isUploading, setIsUploading] = useState(false);
@@ -113,7 +117,7 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => setVariants((current) => [...current, { id: "", size_ml: 1, price: "" }])}
+            onClick={() => setVariants((current) => [...current, { id: "", size_ml: ALLOWED_PRODUCT_SIZES[0], price: "" }])}
           >
             <Plus className="h-4 w-4" />
             حجم
@@ -123,14 +127,13 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
           {variants.map((variant, index) => (
             <div key={`${variant.id}-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
               <input type="hidden" name="variant_id" value={variant.id} />
-              <Input
-                name="size_ml"
-                type="number"
-                min="1"
-                defaultValue={variant.size_ml}
-                placeholder="ml"
-                required
-              />
+              <Select name="size_ml" defaultValue={String(variant.size_ml)} required>
+                {ALLOWED_PRODUCT_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}ml
+                  </option>
+                ))}
+              </Select>
               <Input name="price" type="number" min="0" step="0.01" defaultValue={variant.price} placeholder="USD" required />
               <Button
                 type="button"

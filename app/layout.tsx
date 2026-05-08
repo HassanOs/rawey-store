@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
+import { Footer } from "@/components/organisms/footer";
 import { Navbar } from "@/components/organisms/navbar";
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
     default: "Rawey | Perfume Testers",
     template: "%s | Rawey"
   },
-  description: "متجر Rawey لعَيّنات العطور الأصلية بأحجام 1ml و3ml و5ml و10ml.",
+  description: "متجر Rawey لعَيّنات العطور الأصلية بأحجام 3ml و5ml و10ml.",
   openGraph: {
     title: "Rawey",
     description: "عطور أصلية للتجربة قبل الشراء.",
@@ -32,9 +33,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className={cairo.variable}>
-      <body className="font-sans antialiased">
+      <body className="flex min-h-screen flex-col font-sans antialiased">
         <Navbar />
-        <main>{children}</main>
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );

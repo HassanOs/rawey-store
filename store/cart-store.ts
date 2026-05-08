@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import type { CartItem } from "@/types/cart";
 
 type CartState = {
@@ -18,6 +19,10 @@ export const useCartStore = create<CartState>()(
       items: [],
       addItem: (item) =>
         set((state) => {
+          if (!isAllowedProductSize(item.sizeMl)) {
+            return state;
+          }
+
           const current = state.items.find((cartItem) => cartItem.variantId === item.variantId);
           if (!current) {
             return { items: [...state.items, item] };
@@ -50,5 +55,7 @@ export const useCartStore = create<CartState>()(
 );
 
 export function getCartSubtotal(items: CartItem[]) {
-  return items.reduce((total, item) => total + item.price * item.quantity, 0);
+  return items
+    .filter((item) => isAllowedProductSize(item.sizeMl))
+    .reduce((total, item) => total + item.price * item.quantity, 0);
 }

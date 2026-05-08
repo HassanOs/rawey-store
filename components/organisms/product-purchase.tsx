@@ -5,13 +5,15 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { QuantitySelector } from "@/components/molecules/quantity-selector";
 import { SizeSelector } from "@/components/molecules/size-selector";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 import type { ProductWithVariants } from "@/types/database";
 
 export function ProductPurchase({ product }: { product: ProductWithVariants }) {
+  const variants = product.variants.filter((variant) => isAllowedProductSize(variant.size_ml));
   const addItem = useCartStore((state) => state.addItem);
-  const [selectedVariant, setSelectedVariant] = useState(product.variants[0]);
+  const [selectedVariant, setSelectedVariant] = useState(variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -44,7 +46,7 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold">Choose size</h2>
-        <SizeSelector variants={product.variants} selectedVariantId={selectedVariant.id} onChange={setSelectedVariant} />
+        <SizeSelector variants={variants} selectedVariantId={selectedVariant.id} onChange={setSelectedVariant} />
       </div>
 
       <Button onClick={handleAdd} className="w-full" size="lg">

@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server";
+import { withoutDroppedVariants } from "@/lib/product-variants";
 import type { ProductWithVariants } from "@/types/database";
 
 type ProductFilters = {
@@ -11,6 +12,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   let query = supabase
     .from("products")
     .select("*, variants:product_variants(*)")
+    .neq("variants.size_ml", 1)
     .order("created_at", { ascending: false });
 
   if (filters.search) {
@@ -27,10 +29,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     throw new Error(error.message);
   }
 
-  return (data || []).map((product) => ({
-    ...product,
-    variants: [...(product.variants || [])].sort((a, b) => a.size_ml - b.size_ml)
-  }));
+  return (data || []).map(withoutDroppedVariants).filter((product) => product.variants.length);
 }
 
 export async function getProduct(id: string): Promise<ProductWithVariants | null> {
@@ -38,6 +37,7 @@ export async function getProduct(id: string): Promise<ProductWithVariants | null
   const { data, error } = await supabase
     .from("products")
     .select("*, variants:product_variants(*)")
+    .neq("variants.size_ml", 1)
     .eq("id", id)
     .single();
 
@@ -46,19 +46,11 @@ export async function getProduct(id: string): Promise<ProductWithVariants | null
     throw new Error(error.message);
   }
 
-  return {
-    ...data,
-    variants: [...(data.variants || [])].sort((a, b) => a.size_ml - b.size_ml)
-  };
+  return withoutDroppedVariants(data);
 }
 
 export async function getBrands() {
-  const supabase = createServerClient();
-  const { data, error } = await supabase.from("products").select("brand").order("brand");
+  const products = await getProducts();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Array.from(new Set((data || []).map((item) => item.brand))).filter(Boolean);
+  return Array.from(new Set(products.map((item) => item.brand))).filter(Boolean).sort();
 }

@@ -6,13 +6,15 @@ import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { QuantitySelector } from "@/components/molecules/quantity-selector";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { getCartSubtotal, useCartStore } from "@/store/cart-store";
 
 export function CartList({ shippingPrice }: { shippingPrice: number }) {
   const { items, removeItem, updateQuantity } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const subtotal = getCartSubtotal(items);
+  const visibleItems = items.filter((item) => isAllowedProductSize(item.sizeMl));
+  const subtotal = getCartSubtotal(visibleItems);
   const total = subtotal + shippingPrice;
 
   useEffect(() => setMounted(true), []);
@@ -21,7 +23,7 @@ export function CartList({ shippingPrice }: { shippingPrice: number }) {
     return <div className="h-64 animate-pulse rounded-[2rem] border border-rawey-line bg-white shadow-sm" />;
   }
 
-  if (!items.length) {
+  if (!visibleItems.length) {
     return (
       <div className="rounded-[2rem] border border-rawey-line bg-white p-10 text-center shadow-sm">
         <h1 className="text-2xl font-semibold">السلة فارغة</h1>
@@ -36,7 +38,7 @@ export function CartList({ shippingPrice }: { shippingPrice: number }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <article key={item.variantId} className="flex gap-4 rounded-[2rem] border border-rawey-line bg-white p-4 shadow-sm">
             <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-rawey-background">
               <Image src={item.imageUrl} alt={item.name} fill sizes="80px" className="object-cover" />

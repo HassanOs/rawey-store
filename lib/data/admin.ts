@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import type { OrderWithItems } from "@/types/database";
 
 export async function getAdminOrders(): Promise<OrderWithItems[]> {
@@ -12,7 +13,10 @@ export async function getAdminOrders(): Promise<OrderWithItems[]> {
     throw new Error(error.message);
   }
 
-  return (data || []) as OrderWithItems[];
+  return ((data || []) as OrderWithItems[]).map((order) => ({
+    ...order,
+    items: order.items.filter((item) => !item.variant || isAllowedProductSize(item.variant.size_ml))
+  }));
 }
 
 export async function getStats() {

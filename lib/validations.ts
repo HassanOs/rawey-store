@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALLOWED_PRODUCT_SIZES } from "@/lib/product-variants";
 
 export const governorates = [
   "بيروت",
@@ -69,7 +70,7 @@ export const productFormSchema = z.object({
     .array(
       z.object({
         id: z.string().optional(),
-        size_ml: z.coerce.number().refine((value) => [1, 3, 5, 10].includes(value), "حجم غير صالح"),
+        size_ml: z.coerce.number().refine((value) => ALLOWED_PRODUCT_SIZES.includes(value as never), "حجم غير صالح"),
         price: z.coerce.number().positive("السعر مطلوب")
       })
     )

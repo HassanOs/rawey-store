@@ -3,6 +3,7 @@
 import { checkoutSchema } from "@/lib/validations";
 import { createServerClient } from "@/lib/supabase/server";
 import { getShippingPrice } from "@/lib/data/settings";
+import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import type { CartItem } from "@/types/cart";
 
@@ -62,13 +63,15 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
     return { ok: false, message: "يرجى التأكد من تعبئة معلومات الطلب بشكل صحيح." };
   }
 
-  if (!items.length) {
+  const validItems = items.filter((item) => isAllowedProductSize(item.sizeMl));
+
+  if (!validItems.length) {
     return { ok: false, message: "السلة فارغة." };
   }
 
   const supabase = createServerClient();
   const shippingPrice = await getShippingPrice();
-  const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const subtotal = validItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const totalPrice = subtotal + shippingPrice;
   const deliveryAddress = buildDeliveryAddress(parsed.data);
 
@@ -94,7 +97,7 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
   }
 
   const { error: itemsError } = await supabase.from("order_items").insert(
-    items.map((item) => ({
+    validItems.map((item) => ({
       order_id: order.id,
       product_id: item.productId,
       variant_id: item.variantId,
@@ -109,7 +112,7 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
 
   const whatsappUrl = buildWhatsAppUrl({
     orderId: order.id,
-    items,
+    items: validItems,
     totalPrice,
     deliveryAddress,
     paymentMethod: parsed.data.payment_method
