@@ -1,12 +1,41 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/atoms/button";
 import { ProductCard } from "@/components/molecules/product-card";
+import { loadProductsPage } from "@/app/products/actions";
 import type { ProductWithVariants } from "@/types/database";
 
 type ProductsGridProps = {
-  products: ProductWithVariants[];
+  initialProducts: ProductWithVariants[];
+  initialHasMore: boolean;
+  search?: string;
+  brand?: string;
 };
 
-export function ProductsGrid({ products }: ProductsGridProps) {
+export function ProductsGrid({ initialProducts, initialHasMore, search, brand }: ProductsGridProps) {
+  const [products, setProducts] = useState(initialProducts);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isPending, startTransition] = useTransition();
   const visibleProducts = products.filter((product) => product.variants.length);
+
+  useEffect(() => {
+    setProducts(initialProducts);
+    setPage(0);
+    setHasMore(initialHasMore);
+  }, [initialProducts, initialHasMore, search, brand]);
+
+  function loadMore() {
+    startTransition(async () => {
+      const nextPage = page + 1;
+      const result = await loadProductsPage({ page: nextPage, search, brand });
+      setProducts((current) => [...current, ...result.products]);
+      setPage(nextPage);
+      setHasMore(result.hasMore);
+    });
+  }
 
   if (!visibleProducts.length) {
     return (
@@ -18,10 +47,20 @@ export function ProductsGrid({ products }: ProductsGridProps) {
   }
 
   return (
-    <div className="grid max-h-[52rem] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:max-h-none sm:gap-5 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-4">
-      {visibleProducts.map((product) => (
-        <ProductCard key={product.id} product={product} />
-      ))}
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+        {visibleProducts.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+      {hasMore ? (
+        <div className="flex justify-center">
+          <Button type="button" onClick={loadMore} disabled={isPending} variant="secondary" className="min-w-40">
+            {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            {isPending ? "جاري التحميل..." : "تحميل المزيد"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

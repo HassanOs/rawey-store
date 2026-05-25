@@ -35,7 +35,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pt-4 sm:pt-6">{children}</main>
         <Footer />
       </body>
     </html>
