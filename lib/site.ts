@@ -1,9 +1,23 @@
 export const siteConfig = {
   name: "Rawey",
-  description: "متجر Rawey لعَيّنات العطور الأصلية بأحجام 3ml و5ml و10ml.",
+  description: "متجر Rawey لعَيّنات العطور الأصلية في لبنان بأحجام 3ml و5ml و10ml مع توصيل داخل لبنان.",
   defaultUrl: "https://rawey.vercel.app",
   locale: "ar_LB",
-  instagramUrl: "https://www.instagram.com/rawey.perfume"
+  instagramUrl: "https://www.instagram.com/rawey.perfume",
+  location: {
+    countryCode: "LB",
+    countryName: "Lebanon",
+    countryNameAr: "لبنان",
+    locality: "Dinnieh",
+    localityAr: "الضنية"
+  },
+  keywords: [
+    "عيّنات عطور لبنان",
+    "عطور أصلية لبنان",
+    "تقسيمات عطور لبنان",
+    "perfume testers Lebanon",
+    "Rawey Lebanon"
+  ]
 };
 
 export function getSiteUrl() {

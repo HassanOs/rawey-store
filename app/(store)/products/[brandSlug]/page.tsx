@@ -27,8 +27,8 @@ export async function generateMetadata({ params, searchParams }: BrandProductsPa
   }
 
   const canonical = absoluteUrl(brandPath({ brand: brand.name, brand_slug: brand.slug }));
-  const title = `${brand.name} من Rawey`;
-  const description = `تسوق عيّنات عطور ${brand.name} الأصلية من Rawey.`;
+  const title = `عيّنات عطور ${brand.name} في لبنان`;
+  const description = `تسوق عيّنات عطور ${brand.name} الأصلية في لبنان من Rawey بأحجام 3ml و5ml و10ml مع توصيل داخل لبنان.`;
 
   return {
     title,
@@ -71,8 +71,8 @@ export default async function BrandProductsPage({ params, searchParams }: BrandP
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">{brand.name}</h1>
-        <p className="mt-2 text-rawey-muted">تصفح عيّنات {brand.name} المتوفرة واختَر الحجم المناسب.</p>
+        <h1 className="text-3xl font-bold">عيّنات {brand.name} في لبنان</h1>
+        <p className="mt-2 text-rawey-muted">تصفح عيّنات {brand.name} المتوفرة في لبنان واختَر الحجم المناسب للتوصيل داخل لبنان.</p>
       </div>
       <div className="mb-8 grid gap-3 rounded-[2rem] border border-rawey-line bg-white p-4 shadow-sm md:grid-cols-[1fr_240px]">
         <SearchBar basePath={basePath} />

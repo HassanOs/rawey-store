@@ -22,6 +22,10 @@ function productTitle(product: { brand: string; name: string }) {
   return `${product.brand} ${product.name}`;
 }
 
+function productSeoDescription(product: { brand: string; description: string; name: string }) {
+  return `${productTitle(product)} من Rawey في لبنان. ${product.description} متوفر كعيّنة عطر أصلية بأحجام 3ml و5ml و10ml مع توصيل داخل لبنان.`;
+}
+
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { brandSlug, productSlug } = await params;
   const product = await getProductBySlugs(brandSlug, productSlug);
@@ -31,17 +35,18 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const title = productTitle(product);
+  const description = productSeoDescription(product);
   const url = absoluteUrl(productPath(product));
 
   return {
     title,
-    description: product.description,
+    description,
     alternates: {
       canonical: url
     },
     openGraph: {
       title,
-      description: product.description,
+      description,
       url,
       type: "website",
       images: [{ url: product.image_url, alt: title }]
@@ -49,7 +54,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     twitter: {
       card: "summary_large_image",
       title,
-      description: product.description,
+      description,
       images: [product.image_url]
     }
   };
@@ -78,6 +83,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     description: product.description,
     image: [product.image_url],
     url: productUrl,
+    areaServed: {
+      "@type": "Country",
+      name: siteConfig.location.countryName,
+      alternateName: siteConfig.location.countryNameAr
+    },
     offers: product.variants.map((variant) => ({
       "@type": "Offer",
       price: variant.price,
@@ -85,7 +95,20 @@ export default async function ProductPage({ params }: ProductPageProps) {
       availability: "https://schema.org/InStock",
       itemCondition: "https://schema.org/NewCondition",
       url: productUrl,
-      name: `${title} ${variant.size_ml}ml`
+      name: `${title} ${variant.size_ml}ml`,
+      areaServed: {
+        "@type": "Country",
+        name: siteConfig.location.countryName,
+        alternateName: siteConfig.location.countryNameAr
+      },
+      seller: {
+        "@type": "Store",
+        name: siteConfig.name,
+        areaServed: {
+          "@type": "Country",
+          name: siteConfig.location.countryName
+        }
+      }
     }))
   };
   const breadcrumbJsonLd = {
@@ -145,6 +168,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <div className="order-1 self-center rounded-[2rem] border border-rawey-line bg-white p-5 shadow-sm sm:p-6 lg:order-2 lg:p-8">
           <Badge>{product.brand}</Badge>
           <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-5xl">{product.name}</h1>
+          <p className="mt-3 text-sm font-semibold text-rawey-muted">متوفر للتوصيل داخل لبنان</p>
           <div className="mt-5">
             <ProductPurchase product={product} />
           </div>

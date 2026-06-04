@@ -8,8 +8,16 @@ import { getProducts } from "@/lib/data/products";
 import { ProductCard } from "@/components/molecules/product-card";
 
 export const metadata: Metadata = {
+  title: "عيّنات عطور أصلية في لبنان",
+  description: "تسوق عيّنات عطور أصلية في لبنان من Rawey بأحجام 3ml و5ml و10ml مع توصيل لجميع المناطق اللبنانية.",
   alternates: {
     canonical: "/"
+  },
+  openGraph: {
+    title: "Rawey | عيّنات عطور أصلية في لبنان",
+    description: "تسوق عيّنات عطور أصلية في لبنان بأحجام صغيرة وتجربة سهلة قبل شراء العطر الكامل.",
+    url: "/",
+    type: "website"
   }
 };
 
@@ -23,12 +31,12 @@ export default async function HomePage() {
     <>
       <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_520px] lg:px-8">
         <div>
-          <Badge className="mb-5">Original perfume testers</Badge>
+          <Badge className="mb-5">عيّنات عطور أصلية في لبنان</Badge>
           <h1 className="max-w-3xl pb-3 text-4xl font-extrabold leading-[1.65] text-rawey-text sm:text-6xl">
-            أرقى العطور العالمية، الآن بين يديك
+            أرقى العطور العالمية، الآن في لبنان
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-rawey-muted">
-            اختر العينة التي تناسب ذوقك
+            اختر العينة التي تناسب ذوقك بأحجام 3ml و5ml و10ml، مع توصيل لجميع المناطق اللبنانية.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild href="/products" size="lg">
@@ -43,7 +51,7 @@ export default async function HomePage() {
         <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-rawey-line bg-white shadow-soft">
           <Image
             src="/images/rawey-hero.webp"
-            alt="Rawey perfume tester mockup"
+            alt="عيّنات عطور Rawey الأصلية في لبنان"
             fill
             priority
             sizes="(min-width: 1024px) 520px, 100vw"

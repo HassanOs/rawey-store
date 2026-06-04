@@ -25,15 +25,17 @@ create table if not exists public.profiles (
 create table if not exists public.product_variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
-  size_ml integer not null check (size_ml in (3, 5, 10)),
+  size_ml integer not null check (size_ml in (1, 3, 5, 10)),
   price numeric(10, 2) not null check (price > 0),
+  is_active boolean not null default true,
   unique (product_id, size_ml)
 );
 
-delete from public.product_variants where size_ml = 1;
+alter table public.product_variants add column if not exists is_active boolean not null default true;
+update public.product_variants set is_active = false where size_ml = 1;
 
 alter table public.product_variants drop constraint if exists product_variants_size_ml_check;
-alter table public.product_variants add constraint product_variants_size_ml_check check (size_ml in (3, 5, 10));
+alter table public.product_variants add constraint product_variants_size_ml_check check (size_ml in (1, 3, 5, 10));
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
@@ -442,6 +444,9 @@ alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.settings enable row level security;
 
+drop policy if exists "Public products are readable"
+on public.products;
+
 create policy "Public products are readable"
 on public.products for select
 using (true);
@@ -453,9 +458,15 @@ create policy "Users can read their own profile"
 on public.profiles for select
 using (auth.uid() = id);
 
+drop policy if exists "Public variants are readable"
+on public.product_variants;
+
 create policy "Public variants are readable"
 on public.product_variants for select
 using (true);
+
+drop policy if exists "Public settings are readable"
+on public.settings;
 
 create policy "Public settings are readable"
 on public.settings for select

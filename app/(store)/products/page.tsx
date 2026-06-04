@@ -17,8 +17,8 @@ export async function generateMetadata({ searchParams }: ProductsPageProps): Pro
   const hasFilters = Boolean(params.search);
 
   return {
-    title: "المنتجات",
-    description: "تسوق عيّنات العطور الأصلية من Rawey.",
+    title: "عيّنات عطور أصلية في لبنان",
+    description: "تسوق عيّنات العطور الأصلية في لبنان من Rawey بأحجام 3ml و5ml و10ml مع توصيل داخل لبنان.",
     alternates: {
       canonical: "/products"
     },
@@ -32,8 +32,8 @@ export async function generateMetadata({ searchParams }: ProductsPageProps): Pro
           follow: true
         },
     openGraph: {
-      title: "منتجات Rawey",
-      description: "تسوق عيّنات العطور الأصلية من Rawey.",
+      title: "منتجات Rawey | عيّنات عطور في لبنان",
+      description: "اكتشف عيّنات عطور أصلية متوفرة للتوصيل داخل لبنان.",
       url: "/products",
       type: "website"
     }
@@ -50,8 +50,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">المنتجات</h1>
-        <p className="mt-2 text-rawey-muted">اختر الحجم المناسب وادفع عند الاستلام أو عبر Wish Money.</p>
+        <h1 className="text-3xl font-bold">عيّنات عطور أصلية في لبنان</h1>
+        <p className="mt-2 text-rawey-muted">اختر الحجم المناسب واطلبه للتوصيل داخل لبنان، مع الدفع عند الاستلام أو عبر Wish Money.</p>
       </div>
       <div className="mb-8 grid gap-3 rounded-[2rem] border border-rawey-line bg-white p-4 shadow-sm md:grid-cols-[1fr_240px]">
         <SearchBar />

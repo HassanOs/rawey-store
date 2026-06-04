@@ -49,12 +49,14 @@ export type Database = {
           product_id: string;
           size_ml: number;
           price: number;
+          is_active: boolean;
         };
         Insert: {
           id?: string;
           product_id: string;
           size_ml: number;
           price: number;
+          is_active?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["product_variants"]["Insert"]>;
         Relationships: [

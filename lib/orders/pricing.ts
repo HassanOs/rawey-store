@@ -29,6 +29,7 @@ export type CanonicalVariant = {
   product_id: string;
   size_ml: number;
   price: number | string;
+  is_active?: boolean | null;
   product?: ProductSummary | ProductSummary[] | null;
 };
 
@@ -88,7 +89,7 @@ export function priceCartItems(items: CanonicalCartLine[], variants: CanonicalVa
   for (const item of items) {
     const variant = variantsById.get(item.variantId);
 
-    if (!variant || variant.product_id !== item.productId || !isAllowedProductSize(variant.size_ml)) {
+    if (!variant || variant.product_id !== item.productId || variant.is_active === false || !isAllowedProductSize(variant.size_ml)) {
       return { ok: false, message: "أحد المنتجات في السلة لم يعد متوفراً." };
     }
 

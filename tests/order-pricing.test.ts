@@ -65,6 +65,26 @@ describe("order pricing", () => {
     expect(priced.ok).toBe(false);
   });
 
+  it("rejects inactive historical variants", () => {
+    const parsed = parseCartPayload([{ productId, variantId, quantity: 1 }]);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const priced = priceCartItems(parsed.items, [
+      {
+        id: variantId,
+        product_id: productId,
+        size_ml: 5,
+        price: 12.5,
+        is_active: false,
+        product
+      }
+    ]);
+
+    expect(priced.ok).toBe(false);
+  });
+
   it("rejects quantities above the per-item limit", () => {
     const parsed = parseCartPayload([{ productId, variantId, quantity: MAX_ITEM_QUANTITY + 1 }]);
 

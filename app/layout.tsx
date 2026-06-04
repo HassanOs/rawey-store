@@ -14,12 +14,13 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: `${siteConfig.name} | Perfume Testers`,
+    default: `${siteConfig.name} | عيّنات عطور أصلية في لبنان`,
     template: `%s | ${siteConfig.name}`
   },
   description: siteConfig.description,
+  keywords: siteConfig.keywords,
   openGraph: {
-    title: siteConfig.name,
+    title: `${siteConfig.name} | عيّنات عطور أصلية في لبنان`,
     description: siteConfig.description,
     url: "/",
     siteName: siteConfig.name,
@@ -30,13 +31,13 @@ export const metadata: Metadata = {
         url: "/images/rawey-hero.webp",
         width: 1400,
         height: 1050,
-        alt: "Rawey perfume testers"
+        alt: "Rawey perfume testers in Lebanon"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: siteConfig.name,
+    title: `${siteConfig.name} | عيّنات عطور أصلية في لبنان`,
     description: siteConfig.description,
     images: ["/images/rawey-hero.webp"]
   }
@@ -44,11 +45,23 @@ export const metadata: Metadata = {
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
+  "@type": "Store",
   name: siteConfig.name,
+  description: siteConfig.description,
   url: getSiteUrl(),
   logo: absoluteUrl("/images/logo.svg"),
-  sameAs: [siteConfig.instagramUrl]
+  image: absoluteUrl("/images/rawey-hero.webp"),
+  sameAs: [siteConfig.instagramUrl],
+  areaServed: {
+    "@type": "Country",
+    name: siteConfig.location.countryName,
+    alternateName: siteConfig.location.countryNameAr
+  },
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: siteConfig.location.countryCode,
+    addressLocality: siteConfig.location.locality
+  }
 };
 
 export default function RootLayout({

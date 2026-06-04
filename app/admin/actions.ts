@@ -148,7 +148,8 @@ export async function createProduct(
     product.variants.map((variant) => ({
       product_id: data.id,
       size_ml: variant.size_ml,
-      price: variant.price
+      price: variant.price,
+      is_active: true
     }))
   );
 
@@ -211,24 +212,79 @@ export async function updateProduct(
     return { status: "error", message: error.message };
   }
 
-  await supabase.from("product_variants").delete().eq("product_id", safeProductId.data).eq("size_ml", 1);
-
   const existingIds = product.variants.map((variant) => variant.id).filter(Boolean) as string[];
   if (existingIds.length) {
-    const { data: current } = await supabase.from("product_variants").select("id").eq("product_id", safeProductId.data).neq("size_ml", 1);
+    const { data: current } = await supabase
+      .from("product_variants")
+      .select("id")
+      .eq("product_id", safeProductId.data)
+      .neq("size_ml", 1)
+      .eq("is_active", true);
     const staleIds = (current || []).map((variant) => variant.id).filter((id) => !existingIds.includes(id));
     if (staleIds.length) {
-      await supabase.from("product_variants").delete().in("id", staleIds);
+      const { error: staleError } = await supabase.from("product_variants").update({ is_active: false }).in("id", staleIds);
+
+      if (staleError) {
+        return { status: "error", message: staleError.message };
+      }
     }
   } else {
-    await supabase.from("product_variants").delete().eq("product_id", safeProductId.data).neq("size_ml", 1);
+    const { error: staleError } = await supabase
+      .from("product_variants")
+      .update({ is_active: false })
+      .eq("product_id", safeProductId.data)
+      .neq("size_ml", 1)
+      .eq("is_active", true);
+
+    if (staleError) {
+      return { status: "error", message: staleError.message };
+    }
   }
 
   for (const variant of product.variants) {
     if (variant.id) {
-      await supabase.from("product_variants").update({ size_ml: variant.size_ml, price: variant.price }).eq("id", variant.id);
-    } else {
-      await supabase.from("product_variants").insert({ product_id: safeProductId.data, size_ml: variant.size_ml, price: variant.price });
+      const { error: variantError } = await supabase
+        .from("product_variants")
+        .update({ size_ml: variant.size_ml, price: variant.price, is_active: true })
+        .eq("id", variant.id);
+
+      if (variantError) {
+        return { status: "error", message: variantError.message };
+      }
+
+      continue;
+    }
+
+    const { data: existingVariant, error: existingVariantError } = await supabase
+      .from("product_variants")
+      .select("id")
+      .eq("product_id", safeProductId.data)
+      .eq("size_ml", variant.size_ml)
+      .maybeSingle();
+
+    if (existingVariantError) {
+      return { status: "error", message: existingVariantError.message };
+    }
+
+    if (existingVariant) {
+      const { error: variantError } = await supabase
+        .from("product_variants")
+        .update({ price: variant.price, is_active: true })
+        .eq("id", existingVariant.id);
+
+      if (variantError) {
+        return { status: "error", message: variantError.message };
+      }
+
+      continue;
+    }
+
+    const { error: variantError } = await supabase
+      .from("product_variants")
+      .insert({ product_id: safeProductId.data, size_ml: variant.size_ml, price: variant.price, is_active: true });
+
+    if (variantError) {
+      return { status: "error", message: variantError.message };
     }
   }
 

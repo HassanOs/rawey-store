@@ -92,7 +92,7 @@ export async function createOrder(values: unknown, items: unknown): Promise<Chec
   const variantIds = cart.items.map((item) => item.variantId);
   const { data: variants, error: variantsError } = await supabase
     .from("product_variants")
-    .select("id, product_id, size_ml, price, product:products(id, name, brand, brand_slug, image_url, slug)")
+    .select("id, product_id, size_ml, price, is_active, product:products(id, name, brand, brand_slug, image_url, slug)")
     .in("id", variantIds);
 
   if (variantsError) {

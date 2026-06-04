@@ -26,7 +26,7 @@ export function withoutDroppedVariants<T extends ProductWithVariants>(product: T
   return {
     ...product,
     variants: [...(product.variants || [])]
-      .filter((variant) => isAllowedProductSize(variant.size_ml))
+      .filter((variant) => variant.is_active !== false && isAllowedProductSize(variant.size_ml))
       .sort((a, b) => a.size_ml - b.size_ml)
   };
 }
