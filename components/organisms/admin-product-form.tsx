@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useActionState, useState } from "react";
 import { Plus, Trash2, Upload, Loader } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Input, Textarea } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
 import { ALLOWED_PRODUCT_SIZES, getProductSizeLabel, isAllowedProductSize } from "@/lib/product-variants";
 import { uploadProductImage } from "@/lib/utils/image-upload";
+import type { AdminProductFormState } from "@/app/admin/actions";
 import type { ProductWithVariants } from "@/types/database";
 
 type AdminProductFormProps = {
   product?: ProductWithVariants;
-  action: (formData: FormData) => void | Promise<void>;
+  action: (state: AdminProductFormState, formData: FormData) => Promise<AdminProductFormState>;
+};
+
+const initialState: AdminProductFormState = {
+  status: "idle",
+  message: ""
 };
 
 const defaultVariants = ALLOWED_PRODUCT_SIZES.map((size) => ({
@@ -21,6 +28,7 @@ const defaultVariants = ALLOWED_PRODUCT_SIZES.map((size) => ({
 }));
 
 export function AdminProductForm({ product, action }: AdminProductFormProps) {
+  const [state, formAction, isPending] = useActionState(action, initialState);
   const [variants, setVariants] = useState(
     product?.variants
       .filter((variant) => isAllowedProductSize(variant.size_ml))
@@ -42,8 +50,16 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
     setUploadError("");
 
     try {
-      const url = await uploadProductImage(file);
-      setImageUrl(url);
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadProductImage(formData);
+
+      if (!result.ok) {
+        setUploadError(result.message);
+        return;
+      }
+
+      setImageUrl(result.url);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
     } finally {
@@ -52,15 +68,24 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
   };
 
   return (
-    <form action={action} className="space-y-4 rounded-[2rem] border border-rawey-line bg-white p-5 shadow-sm">
-      <div className="grid gap-3 md:grid-cols-2">
-        <label>
+    <form action={formAction} className="w-full space-y-4 rounded-[2rem] border border-rawey-line bg-white p-5 shadow-sm">
+      {state.message ? (
+        <p
+          className={`rounded-2xl p-3 text-sm ${
+            state.status === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+          }`}
+        >
+          {state.message}
+        </p>
+      ) : null}
+      <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        <label className="min-w-0">
           <span className="mb-2 block text-xs font-semibold">اسم المنتج</span>
-          <Input name="name" defaultValue={product?.name} required />
+          <Input name="name" defaultValue={product?.name} minLength={2} maxLength={120} required />
         </label>
-        <label>
+        <label className="min-w-0">
           <span className="mb-2 block text-xs font-semibold">العلامة</span>
-          <Input name="brand" defaultValue={product?.brand} required />
+          <Input name="brand" defaultValue={product?.brand} minLength={2} maxLength={80} required />
         </label>
       </div>
       <label>
@@ -92,10 +117,13 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
           {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
           {imageUrl && (
             <div className="flex gap-3">
-              <img
+              <Image
                 src={imageUrl}
                 alt="Product preview"
-                className="h-20 w-20 rounded-lg border border-rawey-line object-cover"
+                width={80}
+                height={80}
+                unoptimized
+                className="h-20 w-20 rounded-lg border border-rawey-line bg-rawey-background object-contain"
               />
               <div className="flex flex-col justify-center gap-1">
                 <p className="text-xs font-semibold text-rawey-text">الصورة جاهزة</p>
@@ -108,7 +136,8 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
       </label>
       <label>
         <span className="mb-2 block text-xs font-semibold">الوصف</span>
-        <Textarea name="description" defaultValue={product?.description} required />
+        <Textarea name="description" defaultValue={product?.description} minLength={10} maxLength={2000} required />
+        <span className="mt-1 block text-[11px] text-rawey-muted">10 أحرف على الأقل.</span>
       </label>
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -125,7 +154,7 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
         </div>
         <div className="space-y-2">
           {variants.map((variant, index) => (
-            <div key={`${variant.id}-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+            <div key={`${variant.id}-${index}`} className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               <input type="hidden" name="variant_id" value={variant.id} />
               <Select name="size_ml" defaultValue={String(variant.size_ml)} required>
                 {ALLOWED_PRODUCT_SIZES.map((size) => (
@@ -134,7 +163,7 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
                   </option>
                 ))}
               </Select>
-              <Input name="price" type="number" min="0" step="0.01" defaultValue={variant.price} placeholder="USD" required />
+              <Input name="price" type="number" min="0.01" step="0.01" defaultValue={variant.price} placeholder="USD" required />
               <Button
                 type="button"
                 variant="ghost"
@@ -148,8 +177,9 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
           ))}
         </div>
       </div>
-      <Button type="submit" className="w-full">
-        {product ? "حفظ التعديلات" : "إضافة المنتج"}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? <Loader className="h-4 w-4 animate-spin" /> : null}
+        {isPending ? "جاري الحفظ..." : product ? "حفظ التعديلات" : "إضافة المنتج"}
       </Button>
     </form>
   );

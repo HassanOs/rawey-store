@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Input } from "@/components/atoms/input";
 
-export function SearchBar() {
+export function SearchBar({ basePath = "/products" }: { basePath?: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -16,7 +16,8 @@ export function SearchBar() {
     else next.delete("search");
 
     startTransition(() => {
-      router.push(`/products?${next.toString()}`);
+      const query = next.toString();
+      router.push(`${basePath}${query ? `?${query}` : ""}`);
     });
   }
 

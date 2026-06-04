@@ -8,16 +8,20 @@ export type Database = {
           id: string;
           name: string;
           brand: string;
+          brand_slug: string;
           description: string;
           image_url: string;
+          slug: string;
           created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
           brand: string;
+          brand_slug?: string;
           description: string;
           image_url: string;
+          slug?: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["products"]["Insert"]>;
@@ -151,7 +155,55 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_admin_overview_stats: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          total_orders: number;
+          total_revenue: number;
+          pending_orders: number;
+          delivered_orders: number;
+          product_count: number;
+        }>;
+      };
+      get_admin_payment_breakdown: {
+        Args: { range_days?: number };
+        Returns: Array<{
+          payment_method: "COD" | "WISH";
+          total_orders: number;
+          total_revenue: number;
+        }>;
+      };
+      get_admin_revenue_series: {
+        Args: { range_days?: number };
+        Returns: Array<{
+          day: string;
+          total_orders: number;
+          total_revenue: number;
+        }>;
+      };
+      get_admin_status_breakdown: {
+        Args: { range_days?: number };
+        Returns: Array<{
+          status: "pending" | "shipped" | "delivered";
+          total_orders: number;
+          total_revenue: number;
+        }>;
+      };
+      get_admin_top_products: {
+        Args: { range_days?: number; result_limit?: number };
+        Returns: Array<{
+          product_id: string;
+          name: string;
+          brand: string;
+          brand_slug: string;
+          image_url: string;
+          slug: string;
+          units_sold: number;
+          revenue: number;
+        }>;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/atoms/button";
 import { Input, Textarea } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
@@ -33,7 +33,7 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors }
   } = useForm<CheckoutValues>({
     resolver: zodResolver(checkoutSchema),
@@ -42,9 +42,13 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
       payment_method: "WISH"
     }
   });
-  const paymentMethod = watch("payment_method");
+  const paymentMethod = useWatch({ control, name: "payment_method" });
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function onSubmit(values: CheckoutValues) {
     if (isProcessing) {
@@ -208,4 +212,3 @@ export function CheckoutForm({ shippingPrice, wishMoneyName, wishMoneyPhone }: C
     </div>
   );
 }
-

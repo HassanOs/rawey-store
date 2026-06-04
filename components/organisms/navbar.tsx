@@ -59,8 +59,8 @@ export function Navbar() {
           <Image
             src="/images/logo.svg"
             alt="Rawey Logo"
-            width={56}
-            height={56}
+            width={64}
+            height={49}
           />
         </Link>
         <div className="flex items-center gap-2 text-sm font-semibold">

@@ -46,14 +46,14 @@ const lebanesePhoneSchema = z
   .refine((value) => /^\+961(3\d{6}|(70|71|76|78|79|81)\d{6})$/.test(value), "أدخل رقماً لبنانياً صحيحاً مثل +96176519756 أو 76519756 أو 03XXXXXX");
 
 export const checkoutSchema = z.object({
-  full_name: z.string().min(2, "الاسم الكامل مطلوب"),
+  full_name: z.string().min(2, "الاسم الكامل مطلوب").max(80, "الاسم طويل جداً"),
   phone: lebanesePhoneSchema,
   governorate: z.enum(governorates, {
     required_error: "اختر المحافظة"
   }),
-  district_city: z.string().min(2, "القضاء والمدينة مطلوبان"),
-  address_details: z.string().min(6, "أدخل تفاصيل العنوان"),
-  landmark: z.string().min(3, "أدخل أقرب نقطة دالة"),
+  district_city: z.string().min(2, "القضاء والمدينة مطلوبان").max(80, "القضاء والمدينة طويلان جداً"),
+  address_details: z.string().min(6, "أدخل تفاصيل العنوان").max(240, "تفاصيل العنوان طويلة جداً"),
+  landmark: z.string().min(3, "أدخل أقرب نقطة دالة").max(120, "أقرب نقطة دالة طويلة جداً"),
   payment_method: z.enum(["COD", "WISH"], {
     required_error: "اختر طريقة الدفع"
   })
@@ -62,9 +62,9 @@ export const checkoutSchema = z.object({
 export type CheckoutValues = z.infer<typeof checkoutSchema>;
 
 export const productFormSchema = z.object({
-  name: z.string().min(2, "اسم المنتج مطلوب"),
-  brand: z.string().min(2, "العلامة مطلوبة"),
-  description: z.string().min(10, "الوصف قصير جداً"),
+  name: z.string().min(2, "اسم المنتج مطلوب").max(120, "اسم المنتج طويل جداً"),
+  brand: z.string().min(2, "العلامة مطلوبة").max(80, "اسم العلامة طويل جداً"),
+  description: z.string().min(10, "الوصف قصير جداً").max(2000, "الوصف طويل جداً"),
   image_url: z.string().url("رابط الصورة غير صالح"),
   variants: z
     .array(
@@ -78,4 +78,3 @@ export const productFormSchema = z.object({
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
-

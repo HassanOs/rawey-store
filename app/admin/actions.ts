@@ -3,49 +3,72 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createHash } from "crypto";
+import { z } from "zod";
 import { productFormSchema } from "@/lib/validations";
 import { isAllowedProductSize } from "@/lib/product-variants";
-import { createServerClient } from "@/lib/supabase/server";
+import { createUniqueProductSlugs, productPath } from "@/lib/products/slug";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { SETTINGS_ID } from "@/lib/data/settings";
+import {
+  ADMIN_COOKIE,
+  ADMIN_SESSION_MAX_AGE,
+  createAdminSessionToken,
+  requireAdminSession,
+  verifyAdminPassword
+} from "@/lib/auth/admin-session";
+import { assertSameOriginRequest, getClientIp } from "@/lib/security/request";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
-const ADMIN_COOKIE = "rawey_admin";
+const uuidSchema = z.string().uuid();
+const orderStatusSchema = z.enum(["pending", "shipped", "delivered"]);
+const shippingPriceSchema = z.coerce.number().min(0).max(1000);
 
-function adminToken() {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
-    throw new Error("ADMIN_PASSWORD is not configured.");
-  }
-  return createHash("sha256").update(password).digest("hex");
-}
+export type AdminProductFormState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
 
-export async function isAdminSession() {
-  const cookieStore = await cookies();
-  return cookieStore.get(ADMIN_COOKIE)?.value === adminToken();
-}
+const adminProductFormInitialState: AdminProductFormState = {
+  status: "idle",
+  message: ""
+};
 
 export async function loginAdmin(formData: FormData) {
+  await assertSameOriginRequest();
+  const ip = await getClientIp();
+  const rateLimit = checkRateLimit(`admin-login:${ip}`, 5, 15 * 60 * 1000);
   const password = String(formData.get("password") || "");
 
-  if (password !== process.env.ADMIN_PASSWORD) {
+  if (!rateLimit.ok) {
+    redirect("/admin?error=rate");
+  }
+
+  if (!verifyAdminPassword(password)) {
     redirect("/admin?error=1");
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_COOKIE, adminToken(), {
+  cookieStore.set(ADMIN_COOKIE, createAdminSessionToken(), {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/"
+    maxAge: ADMIN_SESSION_MAX_AGE,
+    path: "/admin"
   });
 
-  redirect("/admin");
+  redirect("/admin/overview");
 }
 
 export async function logoutAdmin() {
+  await assertSameOriginRequest();
   const cookieStore = await cookies();
-  cookieStore.delete(ADMIN_COOKIE);
+  cookieStore.set(ADMIN_COOKIE, "", {
+    httpOnly: true,
+    maxAge: 0,
+    path: "/admin",
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production"
+  });
   redirect("/admin");
 }
 
@@ -54,7 +77,7 @@ function parseProductForm(formData: FormData) {
   const prices = formData.getAll("price").map(String);
   const ids = formData.getAll("variant_id").map(String);
 
-  return productFormSchema.parse({
+  const parsed = productFormSchema.safeParse({
     name: String(formData.get("name") || ""),
     brand: String(formData.get("brand") || ""),
     description: String(formData.get("description") || ""),
@@ -67,18 +90,42 @@ function parseProductForm(formData: FormData) {
       }))
       .filter((variant) => isAllowedProductSize(Number(variant.size_ml)) && variant.price)
   });
+
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      message: parsed.error.issues[0]?.message || "تأكد من تعبئة معلومات المنتج بشكل صحيح."
+    };
+  }
+
+  return { ok: true as const, product: parsed.data };
 }
 
 async function assertAdmin() {
-  if (!(await isAdminSession())) {
+  await assertSameOriginRequest();
+
+  try {
+    await requireAdminSession();
+  } catch {
     redirect("/admin");
   }
 }
 
-export async function createProduct(formData: FormData) {
+export async function createProduct(
+  previousState: AdminProductFormState = adminProductFormInitialState,
+  formData: FormData
+): Promise<AdminProductFormState> {
+  void previousState;
   await assertAdmin();
-  const supabase = createServerClient();
-  const product = parseProductForm(formData);
+  const supabase = createServiceRoleClient();
+  const parsed = parseProductForm(formData);
+
+  if (!parsed.ok) {
+    return { status: "error", message: parsed.message };
+  }
+
+  const { product } = parsed;
+  const { brandSlug, productSlug } = await createUniqueProductSlugs(supabase, product);
 
   const { data, error } = await supabase
     .from("products")
@@ -86,13 +133,15 @@ export async function createProduct(formData: FormData) {
       name: product.name,
       brand: product.brand,
       description: product.description,
-      image_url: product.image_url
+      image_url: product.image_url,
+      brand_slug: brandSlug,
+      slug: productSlug
     })
-    .select("id")
+    .select("id, brand_slug, slug")
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message || "Could not create product.");
+    return { status: "error", message: error?.message || "تعذر إنشاء المنتج." };
   }
 
   const { error: variantsError } = await supabase.from("product_variants").insert(
@@ -104,18 +153,47 @@ export async function createProduct(formData: FormData) {
   );
 
   if (variantsError) {
-    throw new Error(variantsError.message);
+    await supabase.from("products").delete().eq("id", data.id);
+    return { status: "error", message: variantsError.message };
   }
 
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath("/admin");
+  revalidatePath(`/products/${data.brand_slug}`);
+  revalidatePath("/sitemap.xml");
+  revalidatePath(productPath({ id: data.id, name: product.name, brand: product.brand, brand_slug: data.brand_slug, slug: data.slug }));
+  revalidateAdminDashboard();
+
+  return { status: "success", message: "تمت إضافة المنتج بنجاح." };
 }
 
-export async function updateProduct(productId: string, formData: FormData) {
+export async function updateProduct(
+  productId: string,
+  previousState: AdminProductFormState = adminProductFormInitialState,
+  formData: FormData
+): Promise<AdminProductFormState> {
+  void previousState;
   await assertAdmin();
-  const supabase = createServerClient();
-  const product = parseProductForm(formData);
+  const safeProductId = uuidSchema.safeParse(productId);
+
+  if (!safeProductId.success) {
+    return { status: "error", message: "معرّف المنتج غير صالح." };
+  }
+
+  const supabase = createServiceRoleClient();
+  const parsed = parseProductForm(formData);
+
+  if (!parsed.ok) {
+    return { status: "error", message: parsed.message };
+  }
+
+  const { product } = parsed;
+  const { data: currentProduct } = await supabase
+    .from("products")
+    .select("brand, name, brand_slug, slug")
+    .eq("id", safeProductId.data)
+    .maybeSingle();
+  const { brandSlug, productSlug } = await createUniqueProductSlugs(supabase, product, safeProductId.data);
 
   const { error } = await supabase
     .from("products")
@@ -123,45 +201,71 @@ export async function updateProduct(productId: string, formData: FormData) {
       name: product.name,
       brand: product.brand,
       description: product.description,
-      image_url: product.image_url
+      image_url: product.image_url,
+      brand_slug: brandSlug,
+      slug: productSlug
     })
-    .eq("id", productId);
+    .eq("id", safeProductId.data);
 
   if (error) {
-    throw new Error(error.message);
+    return { status: "error", message: error.message };
   }
 
-  await supabase.from("product_variants").delete().eq("product_id", productId).eq("size_ml", 1);
+  await supabase.from("product_variants").delete().eq("product_id", safeProductId.data).eq("size_ml", 1);
 
   const existingIds = product.variants.map((variant) => variant.id).filter(Boolean) as string[];
   if (existingIds.length) {
-    const { data: current } = await supabase.from("product_variants").select("id").eq("product_id", productId).neq("size_ml", 1);
+    const { data: current } = await supabase.from("product_variants").select("id").eq("product_id", safeProductId.data).neq("size_ml", 1);
     const staleIds = (current || []).map((variant) => variant.id).filter((id) => !existingIds.includes(id));
     if (staleIds.length) {
       await supabase.from("product_variants").delete().in("id", staleIds);
     }
   } else {
-    await supabase.from("product_variants").delete().eq("product_id", productId).neq("size_ml", 1);
+    await supabase.from("product_variants").delete().eq("product_id", safeProductId.data).neq("size_ml", 1);
   }
 
   for (const variant of product.variants) {
     if (variant.id) {
       await supabase.from("product_variants").update({ size_ml: variant.size_ml, price: variant.price }).eq("id", variant.id);
     } else {
-      await supabase.from("product_variants").insert({ product_id: productId, size_ml: variant.size_ml, price: variant.price });
+      await supabase.from("product_variants").insert({ product_id: safeProductId.data, size_ml: variant.size_ml, price: variant.price });
     }
   }
 
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath(`/product/${productId}`);
-  revalidatePath("/admin");
+  revalidatePath(`/products/${brandSlug}`);
+  revalidatePath("/sitemap.xml");
+  revalidatePath(productPath({ id: safeProductId.data, name: product.name, brand: product.brand, brand_slug: brandSlug, slug: productSlug }));
+  if (currentProduct?.brand_slug) {
+    revalidatePath(`/products/${currentProduct.brand_slug}`);
+  }
+  if (currentProduct?.brand_slug && currentProduct?.slug) {
+    revalidatePath(
+      productPath({
+        id: safeProductId.data,
+        name: currentProduct.name,
+        brand: currentProduct.brand,
+        brand_slug: currentProduct.brand_slug,
+        slug: currentProduct.slug
+      })
+    );
+  }
+  revalidateAdminDashboard();
+
+  return { status: "success", message: "تم حفظ التعديلات بنجاح." };
 }
 
 export async function deleteProduct(productId: string) {
   await assertAdmin();
-  const supabase = createServerClient();
-  const { error } = await supabase.from("products").delete().eq("id", productId);
+  const safeProductId = uuidSchema.parse(productId);
+  const supabase = createServiceRoleClient();
+  const { data: currentProduct } = await supabase
+    .from("products")
+    .select("id, name, brand, brand_slug, slug")
+    .eq("id", safeProductId)
+    .maybeSingle();
+  const { error } = await supabase.from("products").delete().eq("id", safeProductId);
 
   if (error) {
     throw new Error(error.message);
@@ -169,18 +273,29 @@ export async function deleteProduct(productId: string) {
 
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath("/admin");
+  if (currentProduct?.brand_slug) {
+    revalidatePath(`/products/${currentProduct.brand_slug}`);
+  }
+  if (currentProduct) {
+    revalidatePath(productPath(currentProduct));
+  }
+  revalidatePath("/sitemap.xml");
+  revalidateAdminDashboard();
 }
 
 export async function deleteProducts(formData: FormData) {
   await assertAdmin();
-  const productIds = formData.getAll("product_id").map(String).filter(Boolean);
+  const productIds = z.array(uuidSchema).max(100).parse(formData.getAll("product_id").map(String).filter(Boolean));
 
   if (!productIds.length) {
     return;
   }
 
-  const supabase = createServerClient();
+  const supabase = createServiceRoleClient();
+  const { data: currentProducts } = await supabase
+    .from("products")
+    .select("id, name, brand, brand_slug, slug")
+    .in("id", productIds);
   const { error } = await supabase.from("products").delete().in("id", productIds);
 
   if (error) {
@@ -189,26 +304,35 @@ export async function deleteProducts(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath("/admin");
+  for (const product of currentProducts || []) {
+    if (product.brand_slug) {
+      revalidatePath(`/products/${product.brand_slug}`);
+    }
+    revalidatePath(productPath(product));
+  }
+  revalidatePath("/sitemap.xml");
+  revalidateAdminDashboard();
 }
 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
   await assertAdmin();
-  const status = String(formData.get("status") || "pending") as "pending" | "shipped" | "delivered";
-  const supabase = createServerClient();
-  const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
+  const safeOrderId = uuidSchema.parse(orderId);
+  const status = orderStatusSchema.parse(String(formData.get("status") || "pending"));
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from("orders").update({ status }).eq("id", safeOrderId);
 
   if (error) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/overview");
+  revalidatePath("/admin/orders");
 }
 
 export async function updateShippingPrice(formData: FormData) {
   await assertAdmin();
-  const shippingPrice = Number(formData.get("shipping_price") || 0);
-  const supabase = createServerClient();
+  const shippingPrice = shippingPriceSchema.parse(formData.get("shipping_price") || 0);
+  const supabase = createServiceRoleClient();
   const { error } = await supabase
     .from("settings")
     .upsert({ id: SETTINGS_ID, shipping_price: shippingPrice }, { onConflict: "id" });
@@ -219,5 +343,11 @@ export async function updateShippingPrice(formData: FormData) {
 
   revalidatePath("/cart");
   revalidatePath("/checkout");
-  revalidatePath("/admin");
+  revalidatePath("/admin/overview");
+  revalidatePath("/admin/settings");
+}
+
+function revalidateAdminDashboard() {
+  revalidatePath("/admin/overview");
+  revalidatePath("/admin/products");
 }

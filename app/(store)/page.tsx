@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -6,7 +7,13 @@ import { Badge } from "@/components/atoms/badge";
 import { getProducts } from "@/lib/data/products";
 import { ProductCard } from "@/components/molecules/product-card";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/"
+  }
+};
+
+export const revalidate = 300;
 
 export default async function HomePage() {
   const products = await getProducts();
@@ -35,7 +42,7 @@ export default async function HomePage() {
         </div>
         <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-rawey-line bg-white shadow-soft">
           <Image
-            src="/images/Mockup-White.png"
+            src="/images/rawey-hero.webp"
             alt="Rawey perfume tester mockup"
             fill
             priority

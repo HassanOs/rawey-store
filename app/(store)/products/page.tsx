@@ -4,24 +4,46 @@ import { ProductsGrid } from "@/components/organisms/products-grid";
 import { getBrands, getProductsPage, PRODUCTS_PAGE_SIZE } from "@/lib/data/products";
 import { BrandFilter } from "./brand-filter";
 
-export const metadata: Metadata = {
-  title: "المنتجات",
-  description: "تسوق عيّنات العطور الأصلية من Rawey."
-};
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type ProductsPageProps = {
   searchParams: Promise<{
     search?: string;
-    brand?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: ProductsPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const hasFilters = Boolean(params.search);
+
+  return {
+    title: "المنتجات",
+    description: "تسوق عيّنات العطور الأصلية من Rawey.",
+    alternates: {
+      canonical: "/products"
+    },
+    robots: hasFilters
+      ? {
+          index: false,
+          follow: true
+        }
+      : {
+          index: true,
+          follow: true
+        },
+    openGraph: {
+      title: "منتجات Rawey",
+      description: "تسوق عيّنات العطور الأصلية من Rawey.",
+      url: "/products",
+      type: "website"
+    }
+  };
+}
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
   const [productPage, brands] = await Promise.all([
-    getProductsPage({ search: params.search, brand: params.brand }, 0, PRODUCTS_PAGE_SIZE),
+    getProductsPage({ search: params.search }, 0, PRODUCTS_PAGE_SIZE),
     getBrands()
   ]);
 
@@ -36,10 +58,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <BrandFilter brands={brands} />
       </div>
       <ProductsGrid
+        key={params.search ?? ""}
         initialProducts={productPage.products}
         initialHasMore={productPage.hasMore}
         search={params.search}
-        brand={params.brand}
       />
     </section>
   );

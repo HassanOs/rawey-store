@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { QuantitySelector } from "@/components/molecules/quantity-selector";
 import { SizeSelector } from "@/components/molecules/size-selector";
+import { useToast } from "@/components/organisms/toast-provider";
 import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
@@ -13,6 +14,7 @@ import type { ProductWithVariants } from "@/types/database";
 export function ProductPurchase({ product }: { product: ProductWithVariants }) {
   const variants = product.variants.filter((variant) => isAllowedProductSize(variant.size_ml));
   const addItem = useCartStore((state) => state.addItem);
+  const { showToast } = useToast();
   const [selectedVariant, setSelectedVariant] = useState(variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -22,6 +24,8 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
   function handleAdd() {
     addItem({
       productId: product.id,
+      slug: product.slug,
+      brandSlug: product.brand_slug,
       variantId: selectedVariant.id,
       name: product.name,
       brand: product.brand,
@@ -31,6 +35,14 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
       quantity
     });
     setAdded(true);
+    showToast({
+      title: "تمت إضافة المنتج إلى السلة",
+      description: `${product.brand} ${product.name} - ${selectedVariant.size_ml}ml × ${quantity}`,
+      actions: [
+        { label: "عرض السلة", href: "/cart" },
+        { label: "إتمام الطلب", href: "/checkout" }
+      ]
+    });
     window.setTimeout(() => setAdded(false), 1800);
   }
 
@@ -38,20 +50,20 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
     <div className="space-y-5">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-rawey-muted">From</p>
+          <p className="text-xs font-semibold text-rawey-muted">ابتداءً من</p>
           <p className="mt-1 text-2xl font-bold">{formatPrice(total)}</p>
         </div>
         <QuantitySelector value={quantity} onChange={setQuantity} />
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold">Choose size</h2>
+        <h2 className="mb-3 text-sm font-semibold">اختر الحجم</h2>
         <SizeSelector variants={variants} selectedVariantId={selectedVariant.id} onChange={setSelectedVariant} />
       </div>
 
       <Button onClick={handleAdd} className="w-full" size="lg">
         <ShoppingBag className="h-5 w-5" />
-        {added ? "Added" : "Add to cart"}
+        {added ? "تمت الإضافة" : "أضف إلى السلة"}
       </Button>
     </div>
   );

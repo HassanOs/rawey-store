@@ -3,13 +3,13 @@
 import { getProductsPage, PRODUCTS_PAGE_SIZE } from "@/lib/data/products";
 
 export async function loadProductsPage({
+  brandSlug,
   page,
-  search,
-  brand
+  search
 }: {
+  brandSlug?: string;
   page: number;
   search?: string;
-  brand?: string;
 }) {
-  return getProductsPage({ search, brand }, page, PRODUCTS_PAGE_SIZE);
+  return getProductsPage({ search, brandSlug }, page, PRODUCTS_PAGE_SIZE);
 }

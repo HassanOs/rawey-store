@@ -1,36 +1,56 @@
-import { createClient } from "@/lib/supabase/client";
+"use server";
+
+import { randomUUID } from "crypto";
+import { requireAdminSession } from "@/lib/auth/admin-session";
+import { assertSameOriginRequest } from "@/lib/security/request";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 const BUCKET_NAME = "product-images";
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Map([
+  ["image/avif", "avif"],
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"]
+]);
 
-export async function uploadProductImage(file: File): Promise<string> {
-  // Validate file
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Please upload an image file");
+export type ImageUploadResult =
+  | { ok: true; url: string }
+  | { ok: false; message: string };
+
+export async function uploadProductImage(formData: FormData): Promise<ImageUploadResult> {
+  await assertSameOriginRequest();
+  await requireAdminSession();
+
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return { ok: false, message: "اختر صورة للتحميل." };
   }
 
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error("File size must be less than 5MB");
+  const extension = ALLOWED_IMAGE_TYPES.get(file.type);
+
+  if (!extension) {
+    return { ok: false, message: "الصيغ المسموحة هي JPG وPNG وWebP وAVIF." };
   }
 
-  const supabase = createClient();
+  if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
+    return { ok: false, message: "حجم الصورة يجب أن يكون أقل من 4MB." };
+  }
 
-  // Generate unique filename
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-  // Upload to Supabase Storage
+  const supabase = createServiceRoleClient();
+  const fileName = `${randomUUID()}.${extension}`;
   const { data, error } = await supabase.storage.from(BUCKET_NAME).upload(fileName, file, {
-    cacheControl: "3600",
+    cacheControl: "31536000",
+    contentType: file.type,
     upsert: false
   });
 
   if (error) {
-    throw new Error(`Upload failed: ${error.message}`);
+    return { ok: false, message: `فشل تحميل الصورة: ${error.message}` };
   }
 
-  // Get public URL
   const { data: publicUrl } = supabase.storage.from(BUCKET_NAME).getPublicUrl(data.path);
 
-  return publicUrl.publicUrl;
+  return { ok: true, url: publicUrl.publicUrl };
 }

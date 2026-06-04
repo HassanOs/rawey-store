@@ -1,36 +1,30 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { ProductCard } from "@/components/molecules/product-card";
-import { loadProductsPage } from "@/app/products/actions";
+import { loadProductsPage } from "@/app/(store)/products/actions";
 import type { ProductWithVariants } from "@/types/database";
 
 type ProductsGridProps = {
   initialProducts: ProductWithVariants[];
   initialHasMore: boolean;
   search?: string;
-  brand?: string;
+  brandSlug?: string;
 };
 
-export function ProductsGrid({ initialProducts, initialHasMore, search, brand }: ProductsGridProps) {
+export function ProductsGrid({ initialProducts, initialHasMore, search, brandSlug }: ProductsGridProps) {
   const [products, setProducts] = useState(initialProducts);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isPending, startTransition] = useTransition();
   const visibleProducts = products.filter((product) => product.variants.length);
 
-  useEffect(() => {
-    setProducts(initialProducts);
-    setPage(0);
-    setHasMore(initialHasMore);
-  }, [initialProducts, initialHasMore, search, brand]);
-
   function loadMore() {
     startTransition(async () => {
       const nextPage = page + 1;
-      const result = await loadProductsPage({ page: nextPage, search, brand });
+      const result = await loadProductsPage({ page: nextPage, search, brandSlug });
       setProducts((current) => [...current, ...result.products]);
       setPage(nextPage);
       setHasMore(result.hasMore);

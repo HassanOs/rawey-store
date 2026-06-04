@@ -1,10 +1,10 @@
-import { createServerClient } from "@/lib/supabase/server";
+import { createPublicServerClient } from "@/lib/supabase/server";
 import { withoutDroppedVariants } from "@/lib/product-variants";
 import type { ProductWithVariants } from "@/types/database";
 
 type ProductFilters = {
   search?: string;
-  brand?: string;
+  brandSlug?: string;
 };
 
 export const PRODUCTS_PAGE_SIZE = 8;
@@ -14,8 +14,13 @@ export type ProductsPageResult = {
   hasMore: boolean;
 };
 
+export type BrandLink = {
+  name: string;
+  slug: string;
+};
+
 export async function getProducts(filters: ProductFilters = {}): Promise<ProductWithVariants[]> {
-  const supabase = createServerClient();
+  const supabase = createPublicServerClient();
   let query = supabase
     .from("products")
     .select("*, variants:product_variants(*)")
@@ -26,8 +31,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     query = query.or(`name.ilike.%${filters.search}%,brand.ilike.%${filters.search}%`);
   }
 
-  if (filters.brand) {
-    query = query.eq("brand", filters.brand);
+  if (filters.brandSlug) {
+    query = query.eq("brand_slug", filters.brandSlug);
   }
 
   const { data, error } = await query;
@@ -44,7 +49,7 @@ export async function getProductsPage(
   page = 0,
   limit = PRODUCTS_PAGE_SIZE
 ): Promise<ProductsPageResult> {
-  const supabase = createServerClient();
+  const supabase = createPublicServerClient();
   const from = page * limit;
   const to = from + limit;
   let query = supabase
@@ -58,8 +63,8 @@ export async function getProductsPage(
     query = query.or(`name.ilike.%${filters.search}%,brand.ilike.%${filters.search}%`);
   }
 
-  if (filters.brand) {
-    query = query.eq("brand", filters.brand);
+  if (filters.brandSlug) {
+    query = query.eq("brand_slug", filters.brandSlug);
   }
 
   const { data, error } = await query;
@@ -76,13 +81,14 @@ export async function getProductsPage(
   };
 }
 
-export async function getProduct(id: string): Promise<ProductWithVariants | null> {
-  const supabase = createServerClient();
+export async function getProductBySlugs(brandSlug: string, productSlug: string): Promise<ProductWithVariants | null> {
+  const supabase = createPublicServerClient();
   const { data, error } = await supabase
     .from("products")
     .select("*, variants:product_variants(*)")
     .neq("variants.size_ml", 1)
-    .eq("id", id)
+    .eq("brand_slug", brandSlug)
+    .eq("slug", productSlug)
     .single();
 
   if (error) {
@@ -93,8 +99,37 @@ export async function getProduct(id: string): Promise<ProductWithVariants | null
   return withoutDroppedVariants(data);
 }
 
-export async function getBrands() {
-  const products = await getProducts();
+export async function getBrandBySlug(slug: string): Promise<BrandLink | null> {
+  const supabase = createPublicServerClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("brand, brand_slug")
+    .eq("brand_slug", slug)
+    .order("brand", { ascending: true })
+    .limit(1);
 
-  return Array.from(new Set(products.map((item) => item.brand))).filter(Boolean).sort();
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const brand = data?.[0];
+  return brand ? { name: brand.brand, slug: brand.brand_slug } : null;
+}
+
+export async function getBrands(): Promise<BrandLink[]> {
+  const supabase = createPublicServerClient();
+  const { data, error } = await supabase.from("products").select("brand, brand_slug").order("brand", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const brands = new Map<string, BrandLink>();
+  for (const product of data || []) {
+    if (product.brand && product.brand_slug) {
+      brands.set(product.brand_slug, { name: product.brand, slug: product.brand_slug });
+    }
+  }
+
+  return Array.from(brands.values()).sort((a, b) => a.name.localeCompare(b.name));
 }

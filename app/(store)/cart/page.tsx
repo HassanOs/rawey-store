@@ -4,7 +4,12 @@ import { getShippingPrice } from "@/lib/data/settings";
 
 export const metadata: Metadata = {
   title: "السلة",
-  description: "راجع طلبك قبل إتمام الشراء."
+  description: "راجع طلبك قبل إتمام الشراء.",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true
+  }
 };
 
 export const dynamic = "force-dynamic";

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
-import { Footer } from "@/components/organisms/footer";
-import { Navbar } from "@/components/organisms/navbar";
+import { ToastProvider } from "@/components/organisms/toast-provider";
+import { absoluteUrl, getSiteUrl, siteConfig } from "@/lib/site";
+import { stringifyJsonLd } from "@/lib/seo/json-ld";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -11,19 +12,43 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://rawey.vercel.app"),
+  metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Rawey | Perfume Testers",
-    template: "%s | Rawey"
+    default: `${siteConfig.name} | Perfume Testers`,
+    template: `%s | ${siteConfig.name}`
   },
-  description: "متجر Rawey لعَيّنات العطور الأصلية بأحجام 3ml و5ml و10ml.",
+  description: siteConfig.description,
   openGraph: {
-    title: "Rawey",
-    description: "عطور أصلية للتجربة قبل الشراء.",
-    siteName: "Rawey",
-    locale: "ar_LB",
-    type: "website"
+    title: siteConfig.name,
+    description: siteConfig.description,
+    url: "/",
+    siteName: siteConfig.name,
+    locale: siteConfig.locale,
+    type: "website",
+    images: [
+      {
+        url: "/images/rawey-hero.webp",
+        width: 1400,
+        height: 1050,
+        alt: "Rawey perfume testers"
+      }
+    ]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.name,
+    description: siteConfig.description,
+    images: ["/images/rawey-hero.webp"]
   }
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteConfig.name,
+  url: getSiteUrl(),
+  logo: absoluteUrl("/images/logo.svg"),
+  sameAs: [siteConfig.instagramUrl]
 };
 
 export default function RootLayout({
@@ -34,9 +59,11 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
-        <Navbar />
-        <main className="flex-1 pt-4 sm:pt-6">{children}</main>
-        <Footer />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: stringifyJsonLd(organizationJsonLd) }}
+        />
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

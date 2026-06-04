@@ -1,9 +1,12 @@
 "use server";
 
 import { checkoutSchema } from "@/lib/validations";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShippingPrice } from "@/lib/data/settings";
-import { getProductSizeLabel, isAllowedProductSize } from "@/lib/product-variants";
+import { getProductSizeLabel } from "@/lib/product-variants";
+import { parseCartPayload, priceCartItems, type CanonicalVariant } from "@/lib/orders/pricing";
+import { assertSameOriginRequest, getClientIp } from "@/lib/security/request";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { formatPrice } from "@/lib/utils";
 import type { CartItem } from "@/types/cart";
 
@@ -64,23 +67,46 @@ function buildWhatsAppUrl(args: {
   return `https://wa.me/${shopPhone}?text=${encodeURIComponent(message)}`;
 }
 
-export async function createOrder(values: unknown, items: CartItem[]): Promise<CheckoutResult> {
+export async function createOrder(values: unknown, items: unknown): Promise<CheckoutResult> {
+  await assertSameOriginRequest();
+  const ip = await getClientIp();
+  const rateLimit = checkRateLimit(`checkout:${ip}`, 8, 10 * 60 * 1000);
+
+  if (!rateLimit.ok) {
+    return { ok: false, message: "تم إرسال عدة طلبات خلال وقت قصير. حاول لاحقاً." };
+  }
+
   const parsed = checkoutSchema.safeParse(values);
 
   if (!parsed.success) {
     return { ok: false, message: "يرجى التأكد من تعبئة معلومات الطلب بشكل صحيح." };
   }
 
-  const validItems = items.filter((item) => isAllowedProductSize(item.sizeMl));
+  const cart = parseCartPayload(items);
 
-  if (!validItems.length) {
-    return { ok: false, message: "السلة فارغة." };
+  if (!cart.ok) {
+    return { ok: false, message: cart.message };
   }
 
-  const supabase = createServerClient();
+  const supabase = createServiceRoleClient();
+  const variantIds = cart.items.map((item) => item.variantId);
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select("id, product_id, size_ml, price, product:products(id, name, brand, brand_slug, image_url, slug)")
+    .in("id", variantIds);
+
+  if (variantsError) {
+    return { ok: false, message: variantsError.message };
+  }
+
+  const pricedCart = priceCartItems(cart.items, (variants || []) as CanonicalVariant[]);
+
+  if (!pricedCart.ok) {
+    return { ok: false, message: pricedCart.message };
+  }
+
   const shippingPrice = await getShippingPrice();
-  const subtotal = validItems.reduce((total, item) => total + item.price * item.quantity, 0);
-  const totalPrice = subtotal + shippingPrice;
+  const totalPrice = pricedCart.subtotal + shippingPrice;
   const deliveryAddress = buildDeliveryAddress(parsed.data);
 
   const { data: order, error: orderError } = await supabase
@@ -105,7 +131,7 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
   }
 
   const { error: itemsError } = await supabase.from("order_items").insert(
-    validItems.map((item) => ({
+    pricedCart.items.map((item) => ({
       order_id: order.id,
       product_id: item.productId,
       variant_id: item.variantId,
@@ -115,12 +141,13 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
   );
 
   if (itemsError) {
+    await supabase.from("orders").delete().eq("id", order.id);
     return { ok: false, message: itemsError.message };
   }
 
   const whatsappUrl = buildWhatsAppUrl({
     orderId: order.id,
-    items: validItems,
+    items: pricedCart.items,
     totalPrice,
     deliveryAddress,
     paymentMethod: parsed.data.payment_method
@@ -133,4 +160,3 @@ export async function createOrder(values: unknown, items: CartItem[]): Promise<C
     whatsappUrl
   };
 }
-
