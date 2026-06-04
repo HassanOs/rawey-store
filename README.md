@@ -43,3 +43,4 @@ npm run dev
 - Admin auth uses `ADMIN_PASSWORD` plus a signed `ADMIN_SESSION_SECRET` cookie secret in production.
 - Product images can be Supabase Storage public URLs or other allowed remote URLs configured in `next.config.ts`.
 - Checkout is guest-only and stores orders in Supabase.
+
