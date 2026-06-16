@@ -62,17 +62,19 @@ export function ProductQuickView({ product, onClose }: ProductQuickViewProps) {
 
         <div className="flex flex-col gap-[18px] sm:grid sm:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] sm:items-stretch sm:gap-[34px]">
           {/* Image — RTL: first child = right column */}
-          <div className="relative h-[240px] overflow-hidden rounded-[22px] border border-[#EFEAE1] bg-[#F7F4EF] sm:h-auto sm:min-h-[380px]">
-            <div className="absolute inset-5">
-              <Image
-                src={product.image_url}
-                alt={title}
-                fill
-                sizes="(min-width: 640px) 40vw, 100vw"
-                className="object-contain"
-              />
+          <Link href={href} onClick={onClose} className="block">
+            <div className="relative h-[240px] overflow-hidden rounded-[22px] border border-[#EFEAE1] bg-[#F7F4EF] transition-opacity hover:opacity-90 sm:h-auto sm:min-h-[380px]">
+              <div className="absolute inset-5">
+                <Image
+                  src={product.image_url}
+                  alt={title}
+                  fill
+                  sizes="(min-width: 640px) 40vw, 100vw"
+                  className="object-contain"
+                />
+              </div>
             </div>
-          </div>
+          </Link>
 
           {/* Info */}
           <div className="sm:self-center">

@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: ProductWithVariants }) {
         </Link>
 
         <div className="space-y-3 p-4">
-          <div>
+          <Link href={href} className="block">
             <Badge className="gap-1.5">
               <span aria-hidden="true" className="inline-block h-[5px] w-[5px] shrink-0 rounded-full bg-rawey-gold" />
               {product.brand}
@@ -45,7 +45,7 @@ export function ProductCard({ product }: { product: ProductWithVariants }) {
             <p className="mt-1 text-sm font-semibold text-rawey-muted">
               ابتداءً من {formatPrice(lowestPrice)}
             </p>
-          </div>
+          </Link>
 
           <button
             type="button"
