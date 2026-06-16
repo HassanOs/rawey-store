@@ -29,10 +29,7 @@ export function Navbar() {
             height={49}
           />
         </Link>
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <Link href="/products" className="rounded-full px-4 py-2 transition hover:bg-white">
-            المنتجات
-          </Link>
+        <div className="flex items-center gap-2">
           <Button asChild href="/cart" size="icon" variant="secondary" aria-label="السلة">
             <span className="relative">
               <ShoppingBag className="h-5 w-5" />

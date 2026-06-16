@@ -152,28 +152,41 @@ export default async function ProductPage({ params }: ProductPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: stringifyJsonLd(breadcrumbJsonLd) }}
       />
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:px-8 lg:py-10">
-        <div className="relative order-2 aspect-[4/5] overflow-hidden rounded-[2rem] border border-rawey-line bg-rawey-background/50 shadow-soft lg:order-1">
-          <div className="absolute inset-5 sm:inset-8">
-            <Image
-              src={product.image_url}
-              alt={title}
-              fill
-              priority
-              sizes="(min-width: 1024px) 50vw, 100vw"
-              className="object-contain"
-            />
-          </div>
-        </div>
-        <div className="order-1 self-center rounded-[2rem] border border-rawey-line bg-white p-5 shadow-sm sm:p-6 lg:order-2 lg:p-8">
-          <Badge>{product.brand}</Badge>
-          <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-5xl">{product.name}</h1>
-          <p className="mt-3 text-sm font-semibold text-rawey-muted">متوفر للتوصيل داخل لبنان</p>
-          <div className="mt-5">
-            <ProductPurchase product={product} />
-          </div>
-          <div className="mt-6">
-            <ProductDescription description={product.description} />
+      <section className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="relative rounded-[28px] border border-[#EDE8DF] bg-white p-4 shadow-[0_22px_60px_rgba(26,26,26,0.10)] sm:p-[26px]">
+          <div className="flex flex-col gap-[18px] sm:grid sm:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] sm:items-stretch sm:gap-[34px]">
+
+            {/* Image — RTL first child = right column on sm+ */}
+            <div className="relative h-[264px] overflow-hidden rounded-[22px] border border-[#EFEAE1] bg-[#F7F4EF] sm:h-auto sm:min-h-[480px]">
+              <div className="absolute inset-5">
+                <Image
+                  src={product.image_url}
+                  alt={title}
+                  fill
+                  priority
+                  sizes="(min-width: 640px) 42vw, 100vw"
+                  className="object-contain"
+                />
+              </div>
+            </div>
+
+            {/* Info — RTL second child = left column on sm+ */}
+            <div className="sm:self-center">
+              <Badge className="gap-1.5">
+                <span aria-hidden="true" className="inline-block h-[5px] w-[5px] shrink-0 rounded-full bg-rawey-gold" />
+                {product.brand}
+              </Badge>
+              <h1 className="mt-3 text-[28px] font-extrabold leading-snug">{product.name}</h1>
+              <div className="mt-2.5 h-[3px] w-[42px] rounded bg-rawey-gold" />
+              <p className="mt-2.5 text-[13.5px] font-semibold text-rawey-muted">متوفر للتوصيل داخل لبنان</p>
+              <div className="mt-5">
+                <ProductPurchase product={product} />
+              </div>
+              <div className="mt-[22px]">
+                <ProductDescription description={product.description} />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

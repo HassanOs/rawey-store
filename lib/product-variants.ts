@@ -22,6 +22,11 @@ export function getProductSizeLabel(sizeMl: number) {
   return `${sizeMl}ml (${PRODUCT_SIZE_SPRAYS[sizeMl]} بخة)`;
 }
 
+export function getProductSprays(sizeMl: number): string | null {
+  if (!isAllowedProductSize(sizeMl)) return null;
+  return `(${PRODUCT_SIZE_SPRAYS[sizeMl]} بخة)`;
+}
+
 export function withoutDroppedVariants<T extends ProductWithVariants>(product: T): T {
   return {
     ...product,

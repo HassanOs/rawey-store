@@ -48,10 +48,12 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex items-center justify-between gap-3.5 rounded-[20px] border border-[#EFE7D6] bg-[#FBF8F2] px-4 py-3">
         <div>
-          <p className="text-xs font-semibold text-rawey-muted">ابتداءً من</p>
-          <p className="mt-1 text-2xl font-bold">{formatPrice(total)}</p>
+          <p className="text-[11.5px] font-bold tracking-wide text-rawey-gold">ابتداءً من</p>
+          <p dir="ltr" className="mt-0.5 whitespace-nowrap text-[27px] font-extrabold text-rawey-text">
+            {formatPrice(total)}
+          </p>
         </div>
         <QuantitySelector value={quantity} onChange={setQuantity} />
       </div>
@@ -61,7 +63,11 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
         <SizeSelector variants={variants} selectedVariantId={selectedVariant.id} onChange={setSelectedVariant} />
       </div>
 
-      <Button onClick={handleAdd} className="w-full" size="lg">
+      <Button
+        onClick={handleAdd}
+        className="h-14 w-full font-bold shadow-[0_14px_30px_rgba(26,26,26,0.22)]"
+        size="lg"
+      >
         <ShoppingBag className="h-5 w-5" />
         {added ? "تمت الإضافة" : "أضف إلى السلة"}
       </Button>
