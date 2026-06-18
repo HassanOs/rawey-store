@@ -45,7 +45,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div>
           <Badge className="mb-5 gap-1.5">
             <span aria-hidden="true" className="inline-block h-[5px] w-[5px] shrink-0 rounded-full bg-rawey-gold" />
-            عيّنات عطور أصلية في لبنان
+            عيّنات عطور أصلية
           </Badge>
           <h1 className="max-w-xl text-4xl font-extrabold leading-tight text-rawey-text sm:text-5xl lg:text-6xl">
            عطرك المفضّل,{" "}
