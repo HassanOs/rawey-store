@@ -48,7 +48,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             عيّنات عطور أصلية
           </Badge>
           <h1 className="max-w-xl text-4xl font-extrabold leading-tight text-rawey-text sm:text-5xl lg:text-6xl">
-           عطرك المفضّل,{" "}
+           عطرك المفضّل,{" "} <br />
             <span className="text-rawey-gold">بالحجم المناسب</span>
           </h1>
           <p className="mt-5 max-w-lg text-base leading-8 text-rawey-muted sm:text-lg">
