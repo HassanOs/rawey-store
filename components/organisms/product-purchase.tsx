@@ -50,7 +50,6 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3.5 rounded-[20px] border border-[#EFE7D6] bg-[#FBF8F2] px-4 py-3">
         <div>
-          <p className="text-[11.5px] font-bold tracking-wide text-rawey-gold">ابتداءً من</p>
           <p dir="ltr" className="mt-0.5 whitespace-nowrap text-[27px] font-extrabold text-rawey-text">
             {formatPrice(total)}
           </p>
