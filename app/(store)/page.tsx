@@ -48,11 +48,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             عيّنات عطور أصلية في لبنان
           </Badge>
           <h1 className="max-w-xl text-4xl font-extrabold leading-tight text-rawey-text sm:text-5xl lg:text-6xl">
-            أرقى العطور العالمية،{" "}
-            <span className="text-rawey-gold">الآن في لبنان</span>
+           عطرك المفضّل,{" "}
+            <span className="text-rawey-gold">بالحجم المناسب</span>
           </h1>
           <p className="mt-5 max-w-lg text-base leading-8 text-rawey-muted sm:text-lg">
-            اختر العينة التي تناسب ذوقك بأحجام 3ml و5ml و10ml، مع توصيل لجميع المناطق اللبنانية.
+           اختر العينة التي تناسب ذوقك بأحجام 3ml و 5ml و 10ml، مع توصيل لجميع المناطق اللبنانية.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button href="#catalog" asChild size="lg">

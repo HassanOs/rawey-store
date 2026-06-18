@@ -21,8 +21,7 @@ type CheckoutPageProps = {
 export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
   const [{ success }, shippingPrice] = await Promise.all([searchParams, getShippingPrice()]);
   const wishMoneyName = process.env.WISH_MONEY_NAME || "Hassan Osman";
-  const wishMoneyPhone = process.env.WISH_MONEY_PHONE || "+961 76 519 756";
-
+  const wishMoneyPhone = `\u202A${process.env.WISH_MONEY_PHONE || "+961 76 519 756"}\u202C`;
   if (success) {
     return (
       <section className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
