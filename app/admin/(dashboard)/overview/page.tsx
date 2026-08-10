@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { BarChart3, Boxes, ShoppingBag, Truck } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { AdminDashboardCharts } from "@/components/organisms/admin-charts";
