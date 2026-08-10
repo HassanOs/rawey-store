@@ -21,22 +21,29 @@ export function createPublicServerClient() {
   return createSupabaseClient<Database>(getSupabaseUrl(), key, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
 }
 
-export function createServiceRoleClient() {
+export function createAdminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!key) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing.");
+    console.error(
+      "SUPABASE_SERVICE_ROLE_KEY is missing. Falling back to the public Supabase server client.",
+    );
+    return createPublicServerClient();
   }
 
   return createSupabaseClient<Database>(getSupabaseUrl(), key, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
+}
+
+export function createServiceRoleClient() {
+  return createAdminClient();
 }

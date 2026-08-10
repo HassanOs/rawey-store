@@ -7,7 +7,13 @@ import { formatPrice } from "@/lib/utils";
 import { updateShippingPrice } from "@/app/admin/actions";
 
 export default async function AdminSettingsPage() {
-  const shippingPrice = await getShippingPrice();
+  let shippingPrice = 3;
+
+  try {
+    shippingPrice = await getShippingPrice();
+  } catch (error) {
+    console.error("Failed to load admin settings shipping price:", error);
+  }
 
   return (
     <>
@@ -25,12 +31,26 @@ export default async function AdminSettingsPage() {
           <h3 className="text-base font-bold">التوصيل</h3>
         </div>
 
-        <form action={updateShippingPrice} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_auto] md:items-end">
+        <form
+          action={updateShippingPrice}
+          className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_auto] md:items-end"
+        >
           <label className="min-w-0">
-            <span className="mb-2 block text-xs font-semibold text-rawey-muted">سعر التوصيل</span>
-            <Input name="shipping_price" type="number" min="0" step="0.01" defaultValue={shippingPrice} required />
+            <span className="mb-2 block text-xs font-semibold text-rawey-muted">
+              سعر التوصيل
+            </span>
+            <Input
+              name="shipping_price"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={shippingPrice}
+              required
+            />
           </label>
-          <Button type="submit" className="w-full md:w-auto">حفظ</Button>
+          <Button type="submit" className="w-full md:w-auto">
+            حفظ
+          </Button>
         </form>
       </section>
     </>

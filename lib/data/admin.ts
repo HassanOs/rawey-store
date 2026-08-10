@@ -219,6 +219,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     const { data, error } = await supabase.rpc("get_admin_overview_stats");
 
     if (error) {
+      console.error("Failed to fetch admin stats:", error);
       return normalizeStats({
         totalOrders: 0,
         totalRevenue: 0,
@@ -239,7 +240,8 @@ export async function getAdminStats(): Promise<AdminStats> {
     }
 
     return normalizeAdminStats(data[0] as AdminStatsRpcRow);
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch admin stats:", error);
     return normalizeStats({
       totalOrders: 0,
       totalRevenue: 0,
@@ -262,11 +264,13 @@ export async function getRecentAdminOrders(
       .limit(limit);
 
     if (error) {
+      console.error("Failed to fetch recent admin orders:", error);
       return [];
     }
 
     return (data || []) as RecentAdminOrder[];
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch recent admin orders:", error);
     return [];
   }
 }
@@ -289,14 +293,19 @@ export async function getAdminDashboardData(
         }),
       ]);
 
-    const results = [
-      revenueSeries,
-      statusBreakdown,
-      paymentBreakdown,
-      topProducts,
-    ];
+    if (
+      revenueSeries.error ||
+      statusBreakdown.error ||
+      paymentBreakdown.error ||
+      topProducts.error
+    ) {
+      console.error("Failed to fetch admin dashboard data:", {
+        revenueSeries: revenueSeries.error,
+        statusBreakdown: statusBreakdown.error,
+        paymentBreakdown: paymentBreakdown.error,
+        topProducts: topProducts.error,
+      });
 
-    if (results.some((result) => result.error)) {
       return {
         range,
         revenueSeries: [],
@@ -344,7 +353,8 @@ export async function getAdminDashboardData(
         }),
       ),
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch admin dashboard data:", error);
     return {
       range,
       revenueSeries: [],
@@ -360,60 +370,67 @@ export async function getAdminOrdersPage(
   page = 1,
   pageSize = ADMIN_ORDERS_PAGE_SIZE,
 ): Promise<PaginatedResult<OrderWithItems>> {
-  const supabase = createServiceRoleClient();
   const paging = getQueryPage(page, pageSize);
   const status = normalizeOrderStatusFilter(filters.status);
   const paymentMethod = normalizePaymentMethodFilter(filters.paymentMethod);
   const search = normalizeAdminSearch(filters.search);
   const dateFrom = normalizeDate(filters.dateFrom);
   const dateTo = normalizeDate(filters.dateTo, true);
-  let query = supabase
-    .from("orders")
-    .select(
-      "*, items:order_items(*, product:products(*), variant:product_variants(*))",
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-    .range(paging.from, paging.to);
 
-  if (status === "active") {
-    query = query.neq("status", "delivered");
-  } else if (status !== "all") {
-    query = query.eq("status", status);
+  try {
+    const supabase = createServiceRoleClient();
+    let query = supabase
+      .from("orders")
+      .select(
+        "*, items:order_items(*, product:products(*), variant:product_variants(*))",
+        { count: "exact" },
+      )
+      .order("created_at", { ascending: false })
+      .range(paging.from, paging.to);
+
+    if (status === "active") {
+      query = query.neq("status", "delivered");
+    } else if (status !== "all") {
+      query = query.eq("status", status);
+    }
+
+    if (paymentMethod !== "all") {
+      query = query.eq("payment_method", paymentMethod);
+    }
+
+    if (search) {
+      query = query.or(
+        `full_name.ilike.%${search}%,phone_number.ilike.%${search}%,governorate.ilike.%${search}%,district_city.ilike.%${search}%`,
+      );
+    }
+
+    if (dateFrom) {
+      query = query.gte("created_at", dateFrom);
+    }
+
+    if (dateTo) {
+      query = query.lte("created_at", dateTo);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error("Failed to fetch admin orders page:", error);
+      return buildPagination([], 0, paging.page, paging.pageSize);
+    }
+
+    const orders = ((data || []) as OrderWithItems[]).map((order) => ({
+      ...order,
+      items: order.items.filter(
+        (item) => !item.variant || isAllowedProductSize(item.variant.size_ml),
+      ),
+    }));
+
+    return buildPagination(orders, count, paging.page, paging.pageSize);
+  } catch (error) {
+    console.error("Failed to fetch admin orders page:", error);
+    return buildPagination([], 0, paging.page, paging.pageSize);
   }
-
-  if (paymentMethod !== "all") {
-    query = query.eq("payment_method", paymentMethod);
-  }
-
-  if (search) {
-    query = query.or(
-      `full_name.ilike.%${search}%,phone_number.ilike.%${search}%,governorate.ilike.%${search}%,district_city.ilike.%${search}%`,
-    );
-  }
-
-  if (dateFrom) {
-    query = query.gte("created_at", dateFrom);
-  }
-
-  if (dateTo) {
-    query = query.lte("created_at", dateTo);
-  }
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const orders = ((data || []) as OrderWithItems[]).map((order) => ({
-    ...order,
-    items: order.items.filter(
-      (item) => !item.variant || isAllowedProductSize(item.variant.size_ml),
-    ),
-  }));
-
-  return buildPagination(orders, count, paging.page, paging.pageSize);
 }
 
 export async function getAdminProductsPage(
@@ -421,63 +438,76 @@ export async function getAdminProductsPage(
   page = 1,
   pageSize = ADMIN_PRODUCTS_PAGE_SIZE,
 ): Promise<PaginatedResult<ProductWithVariants>> {
-  const supabase = createServiceRoleClient();
   const paging = getQueryPage(page, pageSize);
   const search = normalizeAdminSearch(filters.search);
   const sort = normalizeProductSort(filters.sort);
   const brand = (filters.brand || "").trim();
-  let query = supabase
-    .from("products")
-    .select("*, variants:product_variants(*)", { count: "exact" })
-    .neq("variants.size_ml", 1)
-    .range(paging.from, paging.to);
 
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,brand.ilike.%${search}%`);
+  try {
+    const supabase = createServiceRoleClient();
+    let query = supabase
+      .from("products")
+      .select("*, variants:product_variants(*)", { count: "exact" })
+      .neq("variants.size_ml", 1)
+      .range(paging.from, paging.to);
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,brand.ilike.%${search}%`);
+    }
+
+    if (brand) {
+      query = query.eq("brand", brand);
+    }
+
+    if (sort === "oldest") {
+      query = query.order("created_at", { ascending: true });
+    } else if (sort === "name") {
+      query = query.order("name", { ascending: true });
+    } else if (sort === "brand") {
+      query = query
+        .order("brand", { ascending: true })
+        .order("name", { ascending: true });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error("Failed to fetch admin products page:", error);
+      return buildPagination([], 0, paging.page, paging.pageSize);
+    }
+
+    const products = (data || [])
+      .map(withoutDroppedVariants)
+      .filter((product) => product.variants.length);
+    return buildPagination(products, count, paging.page, paging.pageSize);
+  } catch (error) {
+    console.error("Failed to fetch admin products page:", error);
+    return buildPagination([], 0, paging.page, paging.pageSize);
   }
-
-  if (brand) {
-    query = query.eq("brand", brand);
-  }
-
-  if (sort === "oldest") {
-    query = query.order("created_at", { ascending: true });
-  } else if (sort === "name") {
-    query = query.order("name", { ascending: true });
-  } else if (sort === "brand") {
-    query = query
-      .order("brand", { ascending: true })
-      .order("name", { ascending: true });
-  } else {
-    query = query.order("created_at", { ascending: false });
-  }
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const products = (data || [])
-    .map(withoutDroppedVariants)
-    .filter((product) => product.variants.length);
-  return buildPagination(products, count, paging.page, paging.pageSize);
 }
 
 export async function getAdminBrands() {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("brand")
-    .order("brand", { ascending: true });
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("brand")
+      .order("brand", { ascending: true });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      console.error("Failed to fetch admin brands:", error);
+      return [];
+    }
+
+    return Array.from(
+      new Set((data || []).map((item) => item.brand).filter(Boolean)),
+    );
+  } catch (error) {
+    console.error("Failed to fetch admin brands:", error);
+    return [];
   }
-
-  return Array.from(
-    new Set((data || []).map((item) => item.brand).filter(Boolean)),
-  );
 }
 
 export async function getAdminOrders(): Promise<OrderWithItems[]> {
