@@ -1,11 +1,20 @@
+export const dynamic = "force-dynamic";
 import type { MetadataRoute } from "next";
 import { getBrands, getProducts } from "@/lib/data/products";
 import { brandPath, productPath } from "@/lib/products/slug";
-import { absoluteUrl } from "@/lib/site";
 import type { BrandLink } from "@/lib/data/products";
 import type { ProductWithVariants } from "@/types/database";
 
 export const revalidate = 3600;
+
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://rawey-store.vercel.app";
+const safeBaseUrl = baseUrl.replace(/\/$/, "");
+
+function sitemapUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${safeBaseUrl}${normalizedPath}`;
+}
 
 type SitemapData = {
   brands: BrandLink[];
@@ -18,29 +27,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     {
-      url: absoluteUrl("/"),
+      url: sitemapUrl("/"),
       lastModified: now,
       changeFrequency: "daily",
-      priority: 1
+      priority: 1,
     },
     {
-      url: absoluteUrl("/products"),
+      url: sitemapUrl("/products"),
       lastModified: now,
       changeFrequency: "daily",
-      priority: 0.9
+      priority: 0.9,
     },
     ...brands.map((brand) => ({
-      url: absoluteUrl(brandPath({ brand: brand.name, brand_slug: brand.slug })),
+      url: sitemapUrl(brandPath({ brand: brand.name, brand_slug: brand.slug })),
       lastModified: now,
       changeFrequency: "daily" as const,
-      priority: 0.85
+      priority: 0.85,
     })),
     ...products.map((product) => ({
-      url: absoluteUrl(productPath(product)),
+      url: sitemapUrl(productPath(product)),
       lastModified: product.created_at ? new Date(product.created_at) : now,
       changeFrequency: "weekly" as const,
-      priority: 0.8
-    }))
+      priority: 0.8,
+    })),
   ];
 }
 

@@ -1,6 +1,13 @@
-import { isAllowedProductSize, withoutDroppedVariants } from "@/lib/product-variants";
+import {
+  isAllowedProductSize,
+  withoutDroppedVariants,
+} from "@/lib/product-variants";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import type { Order, OrderWithItems, ProductWithVariants } from "@/types/database";
+import type {
+  Order,
+  OrderWithItems,
+  ProductWithVariants,
+} from "@/types/database";
 
 export const ADMIN_ORDERS_PAGE_SIZE = 10;
 export const ADMIN_PRODUCTS_PAGE_SIZE = 10;
@@ -13,11 +20,11 @@ const PRODUCT_SORTS = ["newest", "oldest", "name", "brand"] as const;
 const orderStatusLabels: Record<OrderStatus, string> = {
   pending: "قيد المتابعة",
   shipped: "تم الشحن",
-  delivered: "تم التسليم"
+  delivered: "تم التسليم",
 };
 const paymentMethodLabels: Record<"COD" | "WISH", string> = {
   COD: "عند الاستلام",
-  WISH: "Wish"
+  WISH: "Wish",
 };
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -60,7 +67,10 @@ export type AdminProductsFilters = {
   sort?: string;
 };
 
-export type RecentAdminOrder = Pick<Order, "id" | "full_name" | "status" | "total_price" | "created_at">;
+export type RecentAdminOrder = Pick<
+  Order,
+  "id" | "full_name" | "status" | "total_price" | "created_at"
+>;
 
 export type AdminRevenuePoint = {
   day: string;
@@ -139,7 +149,11 @@ type QueryPage = {
 };
 
 export function normalizeAdminSearch(value?: string) {
-  const search = (value || "").trim().replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
+  const search = (value || "")
+    .trim()
+    .replace(/[,%()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return search.length > 80 ? search.slice(0, 80).trim() : search;
 }
 
@@ -148,24 +162,43 @@ export function parseAdminPage(value?: string | number, fallback = 1) {
   return Number.isInteger(page) && page > 0 ? page : fallback;
 }
 
-export function normalizeOrderStatusFilter(value?: string): AdminOrderStatusFilter {
-  return ORDER_STATUS_FILTERS.includes(value as AdminOrderStatusFilter) ? (value as AdminOrderStatusFilter) : "active";
+export function normalizeOrderStatusFilter(
+  value?: string,
+): AdminOrderStatusFilter {
+  return ORDER_STATUS_FILTERS.includes(value as AdminOrderStatusFilter)
+    ? (value as AdminOrderStatusFilter)
+    : "active";
 }
 
-export function normalizePaymentMethodFilter(value?: string): AdminPaymentMethodFilter {
-  return (PAYMENT_METHODS as readonly string[]).includes(value || "") ? (value as AdminPaymentMethodFilter) : "all";
+export function normalizePaymentMethodFilter(
+  value?: string,
+): AdminPaymentMethodFilter {
+  return (PAYMENT_METHODS as readonly string[]).includes(value || "")
+    ? (value as AdminPaymentMethodFilter)
+    : "all";
 }
 
 export function normalizeProductSort(value?: string): AdminProductSort {
-  return PRODUCT_SORTS.includes(value as AdminProductSort) ? (value as AdminProductSort) : "newest";
+  return PRODUCT_SORTS.includes(value as AdminProductSort)
+    ? (value as AdminProductSort)
+    : "newest";
 }
 
-export function normalizeAdminDashboardRange(value?: string | number): AdminDashboardRange {
+export function normalizeAdminDashboardRange(
+  value?: string | number,
+): AdminDashboardRange {
   const range = Number(value);
-  return ADMIN_DASHBOARD_RANGES.includes(range as AdminDashboardRange) ? (range as AdminDashboardRange) : 30;
+  return ADMIN_DASHBOARD_RANGES.includes(range as AdminDashboardRange)
+    ? (range as AdminDashboardRange)
+    : 30;
 }
 
-export function buildPagination<T>(items: T[], count: number | null, page: number, pageSize: number): PaginatedResult<T> {
+export function buildPagination<T>(
+  items: T[],
+  count: number | null,
+  page: number,
+  pageSize: number,
+): PaginatedResult<T> {
   const totalCount = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -176,98 +209,156 @@ export function buildPagination<T>(items: T[], count: number | null, page: numbe
     totalCount,
     totalPages,
     hasNextPage: page < totalPages,
-    hasPreviousPage: page > 1
+    hasPreviousPage: page > 1,
   };
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.rpc("get_admin_overview_stats");
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase.rpc("get_admin_overview_stats");
 
-  if (error) {
-    throw new Error(error.message);
-  }
+    if (error) {
+      return normalizeStats({
+        totalOrders: 0,
+        totalRevenue: 0,
+        pendingOrders: 0,
+        deliveredOrders: 0,
+        productCount: 0,
+      });
+    }
 
-  if (!data?.[0]) {
+    if (!data?.[0]) {
+      return normalizeStats({
+        totalOrders: 0,
+        totalRevenue: 0,
+        pendingOrders: 0,
+        deliveredOrders: 0,
+        productCount: 0,
+      });
+    }
+
+    return normalizeAdminStats(data[0] as AdminStatsRpcRow);
+  } catch {
     return normalizeStats({
       totalOrders: 0,
       totalRevenue: 0,
       pendingOrders: 0,
       deliveredOrders: 0,
-      productCount: 0
+      productCount: 0,
     });
   }
-
-  return normalizeAdminStats(data[0] as AdminStatsRpcRow);
 }
 
-export async function getRecentAdminOrders(limit = 5): Promise<RecentAdminOrder[]> {
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .select("id, full_name, status, total_price, created_at")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+export async function getRecentAdminOrders(
+  limit = 5,
+): Promise<RecentAdminOrder[]> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, full_name, status, total_price, created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data || []) as RecentAdminOrder[];
-}
-
-export async function getAdminDashboardData(rangeValue?: string | number): Promise<AdminDashboardData> {
-  const range = normalizeAdminDashboardRange(rangeValue);
-  const supabase = createServiceRoleClient();
-  const [revenueSeries, statusBreakdown, paymentBreakdown, topProducts] = await Promise.all([
-    supabase.rpc("get_admin_revenue_series", { range_days: range }),
-    supabase.rpc("get_admin_status_breakdown", { range_days: range }),
-    supabase.rpc("get_admin_payment_breakdown", { range_days: range }),
-    supabase.rpc("get_admin_top_products", { range_days: range, result_limit: 5 })
-  ]);
-
-  for (const result of [revenueSeries, statusBreakdown, paymentBreakdown, topProducts]) {
-    if (result.error) {
-      throw new Error(result.error.message);
+    if (error) {
+      return [];
     }
-  }
 
-  return {
-    range,
-    revenueSeries: ((revenueSeries.data || []) as AdminRevenueSeriesRow[]).map((point) => ({
-      day: point.day,
-      totalOrders: Number(point.total_orders || 0),
-      totalRevenue: Number(point.total_revenue || 0)
-    })),
-    statusBreakdown: ((statusBreakdown.data || []) as AdminStatusBreakdownRow[]).map((point) => ({
-      key: point.status,
-      label: orderStatusLabels[point.status],
-      totalOrders: Number(point.total_orders || 0),
-      totalRevenue: Number(point.total_revenue || 0)
-    })),
-    paymentBreakdown: ((paymentBreakdown.data || []) as AdminPaymentBreakdownRow[]).map((point) => ({
-      key: point.payment_method,
-      label: paymentMethodLabels[point.payment_method],
-      totalOrders: Number(point.total_orders || 0),
-      totalRevenue: Number(point.total_revenue || 0)
-    })),
-    topProducts: ((topProducts.data || []) as AdminTopProductRow[]).map((product) => ({
-      productId: product.product_id,
-      name: product.name,
-      brand: product.brand,
-      brandSlug: product.brand_slug,
-      imageUrl: product.image_url,
-      slug: product.slug,
-      unitsSold: Number(product.units_sold || 0),
-      revenue: Number(product.revenue || 0)
-    }))
-  };
+    return (data || []) as RecentAdminOrder[];
+  } catch {
+    return [];
+  }
+}
+
+export async function getAdminDashboardData(
+  rangeValue?: string | number,
+): Promise<AdminDashboardData> {
+  const range = normalizeAdminDashboardRange(rangeValue);
+
+  try {
+    const supabase = createServiceRoleClient();
+    const [revenueSeries, statusBreakdown, paymentBreakdown, topProducts] =
+      await Promise.all([
+        supabase.rpc("get_admin_revenue_series", { range_days: range }),
+        supabase.rpc("get_admin_status_breakdown", { range_days: range }),
+        supabase.rpc("get_admin_payment_breakdown", { range_days: range }),
+        supabase.rpc("get_admin_top_products", {
+          range_days: range,
+          result_limit: 5,
+        }),
+      ]);
+
+    const results = [
+      revenueSeries,
+      statusBreakdown,
+      paymentBreakdown,
+      topProducts,
+    ];
+
+    if (results.some((result) => result.error)) {
+      return {
+        range,
+        revenueSeries: [],
+        statusBreakdown: [],
+        paymentBreakdown: [],
+        topProducts: [],
+      };
+    }
+
+    return {
+      range,
+      revenueSeries: (
+        (revenueSeries.data || []) as AdminRevenueSeriesRow[]
+      ).map((point) => ({
+        day: point.day,
+        totalOrders: Number(point.total_orders || 0),
+        totalRevenue: Number(point.total_revenue || 0),
+      })),
+      statusBreakdown: (
+        (statusBreakdown.data || []) as AdminStatusBreakdownRow[]
+      ).map((point) => ({
+        key: point.status,
+        label: orderStatusLabels[point.status],
+        totalOrders: Number(point.total_orders || 0),
+        totalRevenue: Number(point.total_revenue || 0),
+      })),
+      paymentBreakdown: (
+        (paymentBreakdown.data || []) as AdminPaymentBreakdownRow[]
+      ).map((point) => ({
+        key: point.payment_method,
+        label: paymentMethodLabels[point.payment_method],
+        totalOrders: Number(point.total_orders || 0),
+        totalRevenue: Number(point.total_revenue || 0),
+      })),
+      topProducts: ((topProducts.data || []) as AdminTopProductRow[]).map(
+        (product) => ({
+          productId: product.product_id,
+          name: product.name,
+          brand: product.brand,
+          brandSlug: product.brand_slug,
+          imageUrl: product.image_url,
+          slug: product.slug,
+          unitsSold: Number(product.units_sold || 0),
+          revenue: Number(product.revenue || 0),
+        }),
+      ),
+    };
+  } catch {
+    return {
+      range,
+      revenueSeries: [],
+      statusBreakdown: [],
+      paymentBreakdown: [],
+      topProducts: [],
+    };
+  }
 }
 
 export async function getAdminOrdersPage(
   filters: AdminOrdersFilters = {},
   page = 1,
-  pageSize = ADMIN_ORDERS_PAGE_SIZE
+  pageSize = ADMIN_ORDERS_PAGE_SIZE,
 ): Promise<PaginatedResult<OrderWithItems>> {
   const supabase = createServiceRoleClient();
   const paging = getQueryPage(page, pageSize);
@@ -278,7 +369,10 @@ export async function getAdminOrdersPage(
   const dateTo = normalizeDate(filters.dateTo, true);
   let query = supabase
     .from("orders")
-    .select("*, items:order_items(*, product:products(*), variant:product_variants(*))", { count: "exact" })
+    .select(
+      "*, items:order_items(*, product:products(*), variant:product_variants(*))",
+      { count: "exact" },
+    )
     .order("created_at", { ascending: false })
     .range(paging.from, paging.to);
 
@@ -294,7 +388,7 @@ export async function getAdminOrdersPage(
 
   if (search) {
     query = query.or(
-      `full_name.ilike.%${search}%,phone_number.ilike.%${search}%,governorate.ilike.%${search}%,district_city.ilike.%${search}%`
+      `full_name.ilike.%${search}%,phone_number.ilike.%${search}%,governorate.ilike.%${search}%,district_city.ilike.%${search}%`,
     );
   }
 
@@ -314,7 +408,9 @@ export async function getAdminOrdersPage(
 
   const orders = ((data || []) as OrderWithItems[]).map((order) => ({
     ...order,
-    items: order.items.filter((item) => !item.variant || isAllowedProductSize(item.variant.size_ml))
+    items: order.items.filter(
+      (item) => !item.variant || isAllowedProductSize(item.variant.size_ml),
+    ),
   }));
 
   return buildPagination(orders, count, paging.page, paging.pageSize);
@@ -323,7 +419,7 @@ export async function getAdminOrdersPage(
 export async function getAdminProductsPage(
   filters: AdminProductsFilters = {},
   page = 1,
-  pageSize = ADMIN_PRODUCTS_PAGE_SIZE
+  pageSize = ADMIN_PRODUCTS_PAGE_SIZE,
 ): Promise<PaginatedResult<ProductWithVariants>> {
   const supabase = createServiceRoleClient();
   const paging = getQueryPage(page, pageSize);
@@ -349,7 +445,9 @@ export async function getAdminProductsPage(
   } else if (sort === "name") {
     query = query.order("name", { ascending: true });
   } else if (sort === "brand") {
-    query = query.order("brand", { ascending: true }).order("name", { ascending: true });
+    query = query
+      .order("brand", { ascending: true })
+      .order("name", { ascending: true });
   } else {
     query = query.order("created_at", { ascending: false });
   }
@@ -360,19 +458,26 @@ export async function getAdminProductsPage(
     throw new Error(error.message);
   }
 
-  const products = (data || []).map(withoutDroppedVariants).filter((product) => product.variants.length);
+  const products = (data || [])
+    .map(withoutDroppedVariants)
+    .filter((product) => product.variants.length);
   return buildPagination(products, count, paging.page, paging.pageSize);
 }
 
 export async function getAdminBrands() {
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.from("products").select("brand").order("brand", { ascending: true });
+  const { data, error } = await supabase
+    .from("products")
+    .select("brand")
+    .order("brand", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return Array.from(new Set((data || []).map((item) => item.brand).filter(Boolean)));
+  return Array.from(
+    new Set((data || []).map((item) => item.brand).filter(Boolean)),
+  );
 }
 
 export async function getAdminOrders(): Promise<OrderWithItems[]> {
@@ -380,16 +485,25 @@ export async function getAdminOrders(): Promise<OrderWithItems[]> {
   return firstPage.items;
 }
 
-export function calculateAdminStats(orders: Pick<OrderWithItems, "status" | "total_price">[]) {
-  const totalRevenue = orders.reduce((total, order) => total + order.total_price, 0);
-  const pendingOrders = orders.filter((order) => order.status === "pending").length;
-  const deliveredOrders = orders.filter((order) => order.status === "delivered").length;
+export function calculateAdminStats(
+  orders: Pick<OrderWithItems, "status" | "total_price">[],
+) {
+  const totalRevenue = orders.reduce(
+    (total, order) => total + order.total_price,
+    0,
+  );
+  const pendingOrders = orders.filter(
+    (order) => order.status === "pending",
+  ).length;
+  const deliveredOrders = orders.filter(
+    (order) => order.status === "delivered",
+  ).length;
 
   return {
     totalOrders: orders.length,
     totalRevenue,
     pendingOrders,
-    deliveredOrders
+    deliveredOrders,
   };
 }
 
@@ -402,7 +516,7 @@ function getQueryPage(page: number, pageSize: number): QueryPage {
     from,
     page: safePage,
     pageSize: safePageSize,
-    to: from + safePageSize - 1
+    to: from + safePageSize - 1,
   };
 }
 
@@ -413,7 +527,12 @@ function normalizeDate(value?: string, endOfDay = false) {
   if (Number.isNaN(date.getTime())) return undefined;
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    date.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+    date.setHours(
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0,
+    );
   }
 
   return date.toISOString();
@@ -425,14 +544,18 @@ function normalizeAdminStats(row: AdminStatsRpcRow): AdminStats {
     totalRevenue: Number(row.total_revenue || 0),
     pendingOrders: Number(row.pending_orders || 0),
     deliveredOrders: Number(row.delivered_orders || 0),
-    productCount: Number(row.product_count || 0)
+    productCount: Number(row.product_count || 0),
   });
 }
 
-function normalizeStats(stats: Omit<AdminStats, "activeOrders" | "averageOrder">): AdminStats {
+function normalizeStats(
+  stats: Omit<AdminStats, "activeOrders" | "averageOrder">,
+): AdminStats {
   return {
     ...stats,
     activeOrders: Math.max(stats.totalOrders - stats.deliveredOrders, 0),
-    averageOrder: stats.totalOrders ? stats.totalRevenue / stats.totalOrders : 0
+    averageOrder: stats.totalOrders
+      ? stats.totalRevenue / stats.totalOrders
+      : 0,
   };
 }
