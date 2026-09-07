@@ -5,6 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getShippingPrice } from "@/lib/data/settings";
 import { getProductSizeLabel } from "@/lib/product-variants";
 import { parseCartPayload, priceCartItems, type CanonicalVariant } from "@/lib/orders/pricing";
+import { buildPurchasePayload, type PurchasePixelPayload } from "@/lib/analytics/pixel";
 import { assertSameOriginRequest, getClientIp } from "@/lib/security/request";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { formatPrice } from "@/lib/utils";
@@ -15,6 +16,11 @@ export type CheckoutResult = {
   message: string;
   orderId?: string;
   whatsappUrl?: string;
+  /**
+   * Server-priced totals for the Meta Purchase event. Never derive the tracked
+   * value from the client or the URL - both are user-controlled.
+   */
+  purchase?: PurchasePixelPayload;
 };
 
 function buildDeliveryAddress(values: {
@@ -157,6 +163,7 @@ export async function createOrder(values: unknown, items: unknown): Promise<Chec
     ok: true,
     message: whatsappUrl ? "تم حفظ الطلب. سيتم فتح واتساب لتأكيده." : "تم حفظ الطلب بنجاح.",
     orderId: order.id,
-    whatsappUrl
+    whatsappUrl,
+    purchase: buildPurchasePayload(order.id, pricedCart.items, totalPrice)
   };
 }

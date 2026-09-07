@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SearchPixel, ViewCategoryPixel } from "@/components/analytics/meta-pixel";
 import { SearchBar } from "@/components/molecules/search-bar";
 import { ProductsGrid } from "@/components/organisms/products-grid";
 import { getBrands, getProductsPage, PRODUCTS_PAGE_SIZE } from "@/lib/data/products";
@@ -47,8 +48,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     getBrands()
   ]);
 
+  const productIds = productPage.products.map((product) => product.id);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {params.search ? (
+        <SearchPixel
+          key={`search:${params.search}`}
+          searchString={params.search}
+          productIds={productIds}
+        />
+      ) : (
+        <ViewCategoryPixel categoryName="All Products" productIds={productIds} />
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">عيّنات عطور أصلية في لبنان</h1>
         <p className="mt-2 text-rawey-muted">اختر الحجم المناسب واطلبه للتوصيل داخل لبنان، مع الدفع عند الاستلام أو عبر Wish Money.</p>

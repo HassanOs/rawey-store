@@ -3,12 +3,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/atoms/button";
 import { Input, Textarea } from "@/components/atoms/input";
 import { Select } from "@/components/atoms/select";
 import { createOrder } from "@/app/actions/checkout";
+import {
+  cartPixelPayload,
+  trackMetaPixel,
+  trackMetaPixelOnce,
+} from "@/lib/analytics/pixel";
 import {
   checkoutSchema,
   governorates,
@@ -53,12 +58,42 @@ export function CheckoutForm({
     },
   });
   const paymentMethod = useWatch({ control, name: "payment_method" });
+  const initiateCheckoutSent = useRef(false);
+  const paymentInfoSent = useRef(false);
+  const defaultPaymentMethod = useRef(paymentMethod);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setMounted(true), 0);
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (initiateCheckoutSent.current || !visibleItems.length) {
+      return;
+    }
+
+    initiateCheckoutSent.current = true;
+    trackMetaPixel("InitiateCheckout", cartPixelPayload(visibleItems));
+  }, [visibleItems]);
+
+  // The form preselects a payment method, so only an actual user choice counts.
+  useEffect(() => {
+    if (
+      paymentInfoSent.current ||
+      !visibleItems.length ||
+      !paymentMethod ||
+      paymentMethod === defaultPaymentMethod.current
+    ) {
+      return;
+    }
+
+    paymentInfoSent.current = true;
+    trackMetaPixel("AddPaymentInfo", {
+      ...cartPixelPayload(visibleItems),
+      payment_method: paymentMethod,
+    });
+  }, [paymentMethod, visibleItems]);
 
   async function onSubmit(values: CheckoutValues) {
     if (isProcessing) {
@@ -69,6 +104,15 @@ export function CheckoutForm({
     setIsProcessing(true);
 
     try {
+      // Covers shoppers who keep the preselected payment method.
+      if (!paymentInfoSent.current && visibleItems.length) {
+        paymentInfoSent.current = true;
+        trackMetaPixel("AddPaymentInfo", {
+          ...cartPixelPayload(visibleItems),
+          payment_method: values.payment_method,
+        });
+      }
+
       const result = await createOrder(values, visibleItems);
       setMessage(result.message);
 
@@ -77,9 +121,28 @@ export function CheckoutForm({
         return;
       }
 
+      // Values come from the server-priced order, never from the client cart.
+      if (result.purchase) {
+        const purchase = result.purchase;
+
+        trackMetaPixelOnce(
+          `purchase:${purchase.orderId}`,
+          "Purchase",
+          {
+            content_type: "product",
+            content_ids: purchase.contentIds,
+            contents: purchase.contents,
+            num_items: purchase.numItems,
+            value: purchase.value,
+            currency: purchase.currency,
+          },
+          purchase.orderId,
+        );
+      }
+
       clearCart();
 
-      const successUrl = `/checkout?success=${result.orderId}&value=${Number(total.toFixed(2))}`;
+      const successUrl = `/checkout?success=${encodeURIComponent(result.orderId ?? "")}`;
 
       if (result.whatsappUrl) {
         window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
@@ -115,7 +178,7 @@ export function CheckoutForm({
   return (
     <div dir="rtl" className="grid gap-6 text-right lg:grid-cols-[1fr_360px]">
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={(event) => handleSubmit(onSubmit)(event)}
         className="rounded-[2rem] border border-rawey-line bg-white p-6 shadow-sm"
       >
         <h1 className="text-2xl font-semibold">إتمام الطلب</h1>

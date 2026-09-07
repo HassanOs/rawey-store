@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { X, ArrowLeft } from "lucide-react";
 import { useEffect } from "react";
+import { ProductViewContentPixel } from "@/components/analytics/meta-pixel";
 import { Badge } from "@/components/atoms/badge";
 import { ProductDescription } from "@/components/organisms/product-description";
 import { ProductPurchase } from "@/components/organisms/product-purchase";
@@ -42,6 +43,12 @@ export function ProductQuickView({ product, onClose }: ProductQuickViewProps) {
       aria-modal="true"
       aria-label={title}
     >
+      <ProductViewContentPixel
+        productId={product.id}
+        productName={title}
+        productBrand={product.brand}
+        price={product.variants[0]?.price ?? 0}
+      />
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-rawey-text/60 backdrop-blur-sm"

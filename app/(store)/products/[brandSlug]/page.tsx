@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { SearchPixel, ViewCategoryPixel } from "@/components/analytics/meta-pixel";
 import { SearchBar } from "@/components/molecules/search-bar";
 import { ProductsGrid } from "@/components/organisms/products-grid";
 import { getBrandBySlug, getBrands, getProductsPage, PRODUCTS_PAGE_SIZE } from "@/lib/data/products";
@@ -67,9 +68,19 @@ export default async function BrandProductsPage({ params, searchParams }: BrandP
     getBrands()
   ]);
   const basePath = brandPath({ brand: brand.name, brand_slug: brand.slug });
+  const productIds = productPage.products.map((product) => product.id);
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {query.search ? (
+        <SearchPixel
+          key={`search:${brand.slug}:${query.search}`}
+          searchString={query.search}
+          productIds={productIds}
+        />
+      ) : (
+        <ViewCategoryPixel categoryName={brand.name} productIds={productIds} />
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">عيّنات {brand.name} في لبنان</h1>
         <p className="mt-2 text-rawey-muted">تصفح عيّنات {brand.name} المتوفرة في لبنان واختَر الحجم المناسب للتوصيل داخل لبنان.</p>

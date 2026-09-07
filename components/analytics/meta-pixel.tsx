@@ -1,27 +1,15 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { Suspense, useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  PIXEL_CURRENCY,
+  roundCurrency,
+  trackMetaPixel,
+} from "@/lib/analytics/pixel";
 
 export const META_PIXEL_ID = "1782494246126807";
-
-export function trackMetaPixel(
-  event: string,
-  data: Record<string, unknown> = {},
-) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq;
-
-  if (!fbq) {
-    return;
-  }
-
-  fbq("track", event, data);
-}
 
 export function MetaPixel() {
   return (
@@ -34,26 +22,49 @@ export function MetaPixel() {
             n.queue=[];t=b.createElement(e);t.async=!0;
             t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)
           }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-          if (!window.fbq) {
-            window.fbq = function() {
-              (window.fbq.queue = window.fbq.queue || []).push(arguments);
-            };
-            window.fbq.queue = window.fbq.queue || [];
-          }
-          window.fbq('init', '${META_PIXEL_ID}');
+          fbq('init', '${META_PIXEL_ID}');
+          fbq('track', 'PageView');
         `}
       </Script>
-      <MetaPixelPageView />
+      <noscript
+        dangerouslySetInnerHTML={{
+          __html: `<img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1" />`,
+        }}
+      />
+      {/* useSearchParams() must sit inside Suspense or the whole app opts out of static rendering. */}
+      <Suspense fallback={null}>
+        <MetaPixelRouteTracker />
+      </Suspense>
     </>
   );
 }
 
-function MetaPixelPageView() {
+/**
+ * The base snippet fires the first PageView. This only covers client-side
+ * navigations, including query-string-only changes such as ?search= or
+ * ?success=, which a pathname-only effect would miss.
+ */
+function MetaPixelRouteTracker() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const lastKey = useRef<string | null>(null);
 
   useEffect(() => {
+    const query = searchParams.toString();
+    const key = query ? `${pathname}?${query}` : pathname;
+
+    if (lastKey.current === null) {
+      lastKey.current = key;
+      return;
+    }
+
+    if (lastKey.current === key) {
+      return;
+    }
+
+    lastKey.current = key;
     trackMetaPixel("PageView");
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   return null;
 }
@@ -63,7 +74,7 @@ export function ProductViewContentPixel({
   productName,
   productBrand,
   price,
-  currency = "USD",
+  currency = PIXEL_CURRENCY,
 }: {
   productId: string;
   productName: string;
@@ -78,7 +89,8 @@ export function ProductViewContentPixel({
       content_category: "product",
       content_type: "product",
       content_brand: productBrand,
-      value: price,
+      contents: [{ id: productId, quantity: 1, item_price: roundCurrency(price) }],
+      value: roundCurrency(price),
       currency,
     });
   }, [currency, price, productBrand, productId, productName]);
@@ -86,49 +98,47 @@ export function ProductViewContentPixel({
   return null;
 }
 
-export function PurchasePixel({
-  orderValue = 0,
-  currency = "USD",
-  orderId = "rawey-order",
+export function ViewCategoryPixel({
+  categoryName,
+  productIds,
 }: {
-  orderValue?: number;
-  currency?: string;
-  orderId?: string;
+  categoryName: string;
+  productIds: string[];
 }) {
+  const ids = productIds.join(",");
+
   useEffect(() => {
-    trackMetaPixel("Purchase", {
-      value: orderValue,
-      currency,
-      content_ids: [orderId],
+    trackMetaPixel("ViewCategory", {
+      content_name: categoryName,
+      content_category: categoryName,
       content_type: "product",
-      content_name: "Rawey Order",
+      content_ids: ids ? ids.split(",") : [],
     });
-  }, [currency, orderId, orderValue]);
+  }, [categoryName, ids]);
 
   return null;
 }
 
-export function AddToCartPixel({
-  productId,
-  productName,
-  quantity,
-  price,
-  currency = "USD",
+export function SearchPixel({
+  searchString,
+  productIds,
 }: {
-  productId: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  currency?: string;
+  searchString: string;
+  productIds: string[];
 }) {
-  trackMetaPixel("AddToCart", {
-    content_ids: [productId],
-    content_name: productName,
-    content_category: "product",
-    content_type: "product",
-    value: price * quantity,
-    currency,
-  });
+  const ids = productIds.join(",");
+
+  useEffect(() => {
+    if (!searchString) {
+      return;
+    }
+
+    trackMetaPixel("Search", {
+      search_string: searchString,
+      content_type: "product",
+      content_ids: ids ? ids.split(",") : [],
+    });
+  }, [ids, searchString]);
 
   return null;
 }

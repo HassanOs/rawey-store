@@ -2,11 +2,11 @@
 
 import { ShoppingBag } from "lucide-react";
 import { useMemo, useState } from "react";
-import { trackMetaPixel } from "@/components/analytics/meta-pixel";
 import { Button } from "@/components/atoms/button";
 import { QuantitySelector } from "@/components/molecules/quantity-selector";
 import { SizeSelector } from "@/components/molecules/size-selector";
 import { useToast } from "@/components/organisms/toast-provider";
+import { cartPixelPayload, trackMetaPixel } from "@/lib/analytics/pixel";
 import { isAllowedProductSize } from "@/lib/product-variants";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
@@ -41,13 +41,19 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
       quantity,
     });
 
+    const cartLine = [
+      {
+        productId: product.id,
+        price: selectedVariant.price,
+        quantity,
+      },
+    ];
+
     trackMetaPixel("AddToCart", {
-      content_ids: [product.id],
+      ...cartPixelPayload(cartLine),
       content_name: `${product.brand} ${product.name}`,
       content_category: "product",
-      content_type: "product",
-      value: selectedVariant.price * quantity,
-      currency: "USD",
+      content_brand: product.brand,
     });
 
     setAdded(true);

@@ -3,16 +3,21 @@ import type { NextConfig } from "next";
 const supabaseImageSource = "https://*.supabase.co";
 const unsplashImageSource = "https://images.unsplash.com";
 
-const facebookDomains = [
+// Meta Pixel: fbevents.js is served from connect.facebook.net, event beacons and
+// the <noscript> fallback image go to www.facebook.com. www.facebook.net is not a
+// real Meta host and was removed.
+const metaScriptSources = "https://connect.facebook.net";
+const metaConnectSources = [
   "https://connect.facebook.net",
+  "https://*.facebook.com",
+  "https://graph.facebook.com",
+].join(" ");
+const metaImageSources = [
   "https://*.facebook.com",
   "https://*.fbcdn.net",
   "https://*.fbsbx.com",
-  "https://*.facebook.net",
-  "https://www.facebook.com",
-  "https://www.facebook.net",
-  "https://graph.facebook.com",
 ].join(" ");
+const metaFrameSources = "https://*.facebook.com https://connect.facebook.net";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -20,12 +25,12 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  `img-src 'self' data: blob: ${supabaseImageSource} ${unsplashImageSource} ${facebookDomains}`,
+  `img-src 'self' data: blob: ${supabaseImageSource} ${unsplashImageSource} ${metaImageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://www.facebook.com https://www.facebook.net`,
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${facebookDomains}`,
-  `frame-src 'self' https://www.facebook.com https://connect.facebook.net`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${metaScriptSources}`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${metaConnectSources}`,
+  `frame-src 'self' ${metaFrameSources}`,
   "upgrade-insecure-requests",
 ].join("; ");
 
