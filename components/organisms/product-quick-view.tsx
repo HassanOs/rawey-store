@@ -92,7 +92,7 @@ export function ProductQuickView({ product, onClose }: ProductQuickViewProps) {
             <h2 className="mt-3 text-[26px] font-extrabold leading-snug">{product.name}</h2>
             <div className="mt-2.5 h-[3px] w-[42px] rounded bg-rawey-gold" />
             <p className="mt-2.5 text-[13.5px] font-semibold text-rawey-muted">
-              متوفر للتوصيل داخل لبنان
+              {product.sold_out ? "نفذت الكمية" : "متوفر للتوصيل داخل لبنان"}
             </p>
             <div className="mt-5">
               <ProductPurchase product={product} />

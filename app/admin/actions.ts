@@ -82,6 +82,7 @@ function parseProductForm(formData: FormData) {
     brand: String(formData.get("brand") || ""),
     description: String(formData.get("description") || ""),
     image_url: String(formData.get("image_url") || ""),
+    sold_out: formData.get("sold_out") === "on",
     variants: sizes
       .map((size, index) => ({
         id: ids[index] || undefined,
@@ -135,13 +136,14 @@ export async function createProduct(
       description: product.description,
       image_url: product.image_url,
       brand_slug: brandSlug,
-      slug: productSlug
+      slug: productSlug,
+      sold_out: product.sold_out
     })
     .select("id, brand_slug, slug")
     .single();
 
   if (error || !data) {
-    return { status: "error", message: error?.message || "تعذر إنشاء المنتج." };
+    return { status: "error", message: formatProductWriteError(error?.message) };
   }
 
   const { error: variantsError } = await supabase.from("product_variants").insert(
@@ -204,12 +206,13 @@ export async function updateProduct(
       description: product.description,
       image_url: product.image_url,
       brand_slug: brandSlug,
-      slug: productSlug
+      slug: productSlug,
+      sold_out: product.sold_out
     })
     .eq("id", safeProductId.data);
 
   if (error) {
-    return { status: "error", message: error.message };
+    return { status: "error", message: formatProductWriteError(error.message) };
   }
 
   const existingIds = product.variants.map((variant) => variant.id).filter(Boolean) as string[];
@@ -312,62 +315,132 @@ export async function updateProduct(
   return { status: "success", message: "تم حفظ التعديلات بنجاح." };
 }
 
-export async function deleteProduct(productId: string) {
-  await assertAdmin();
-  const safeProductId = uuidSchema.parse(productId);
-  const supabase = createServiceRoleClient();
-  const { data: currentProduct } = await supabase
-    .from("products")
-    .select("id, name, brand, brand_slug, slug")
-    .eq("id", safeProductId)
-    .maybeSingle();
-  const { error } = await supabase.from("products").delete().eq("id", safeProductId);
+type ProductDeleteTarget = {
+  id: string;
+  name: string;
+  brand: string;
+  brand_slug: string;
+  slug: string;
+};
 
-  if (error) {
-    throw new Error(error.message);
-  }
+export type AdminDeleteResult = { ok: true } | { ok: false; message: string };
 
-  revalidatePath("/");
-  revalidatePath("/products");
-  if (currentProduct?.brand_slug) {
-    revalidatePath(`/products/${currentProduct.brand_slug}`);
-  }
-  if (currentProduct) {
-    revalidatePath(productPath(currentProduct));
-  }
-  revalidatePath("/sitemap.xml");
-  revalidateAdminDashboard();
+function isForeignKeyError(error: { code?: string; message?: string } | null) {
+  return error?.code === "23503" || /foreign key constraint/i.test(error?.message || "");
 }
 
-export async function deleteProducts(formData: FormData) {
+async function detachOrderItems(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  productIds: string[]
+) {
+  const { error: clearError } = await supabase
+    .from("order_items")
+    .update({ product_id: null, variant_id: null })
+    .in("product_id", productIds);
+
+  if (!clearError) {
+    return null;
+  }
+
+  const columnRejectsNull = clearError.code === "23502" || /not-null constraint/i.test(clearError.message || "");
+
+  if (!columnRejectsNull) {
+    return clearError;
+  }
+
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select("id")
+    .in("product_id", productIds);
+
+  if (variantsError) {
+    return variantsError;
+  }
+
+  const variantIds = (variants || []).map((variant) => variant.id);
+
+  if (variantIds.length) {
+    const { error } = await supabase.from("order_items").delete().in("variant_id", variantIds);
+
+    if (error) {
+      return error;
+    }
+  }
+
+  const { error } = await supabase.from("order_items").delete().in("product_id", productIds);
+  return error;
+}
+
+async function deleteProductsByIds(productIds: string[]): Promise<AdminDeleteResult> {
   await assertAdmin();
-  const productIds = z.array(uuidSchema).max(100).parse(formData.getAll("product_id").map(String).filter(Boolean));
 
   if (!productIds.length) {
-    return;
+    return { ok: false, message: "اختر منتجاً للحذف." };
   }
 
   const supabase = createServiceRoleClient();
-  const { data: currentProducts } = await supabase
+  const { data: currentProducts, error: loadError } = await supabase
     .from("products")
     .select("id, name, brand, brand_slug, slug")
     .in("id", productIds);
-  const { error } = await supabase.from("products").delete().in("id", productIds);
 
-  if (error) {
-    throw new Error(error.message);
+  if (loadError) {
+    return { ok: false, message: "تعذر حذف المنتج." };
   }
 
+  let { error } = await supabase.from("products").delete().in("id", productIds);
+
+  if (isForeignKeyError(error)) {
+    const detachError = await detachOrderItems(supabase, productIds);
+
+    if (detachError) {
+      return { ok: false, message: "تعذر حذف المنتج لأنه مرتبط بطلبات سابقة." };
+    }
+
+    ({ error } = await supabase.from("products").delete().in("id", productIds));
+  }
+
+  if (error) {
+    return { ok: false, message: "تعذر حذف المنتج." };
+  }
+
+  revalidateDeletedProducts((currentProducts || []) as ProductDeleteTarget[]);
+  return { ok: true };
+}
+
+function revalidateDeletedProducts(products: ProductDeleteTarget[]) {
   revalidatePath("/");
   revalidatePath("/products");
-  for (const product of currentProducts || []) {
+
+  for (const product of products) {
     if (product.brand_slug) {
       revalidatePath(`/products/${product.brand_slug}`);
     }
     revalidatePath(productPath(product));
   }
+
   revalidatePath("/sitemap.xml");
   revalidateAdminDashboard();
+}
+
+export async function deleteProduct(productId: string): Promise<AdminDeleteResult> {
+  const safeProductId = uuidSchema.safeParse(productId);
+
+  if (!safeProductId.success) {
+    return { ok: false, message: "معرّف المنتج غير صالح." };
+  }
+
+  return deleteProductsByIds([safeProductId.data]);
+}
+
+export async function deleteProducts(formData: FormData): Promise<AdminDeleteResult> {
+  const productIds = z.array(uuidSchema).max(100).safeParse(formData.getAll("product_id").map(String).filter(Boolean));
+
+  if (!productIds.success) {
+    return { ok: false, message: "تعذر حذف المنتجات المحددة." };
+  }
+
+  return deleteProductsByIds(productIds.data);
 }
 
 export async function updateOrderStatus(orderId: string, formData: FormData) {
@@ -401,6 +474,14 @@ export async function updateShippingPrice(formData: FormData) {
   revalidatePath("/checkout");
   revalidatePath("/admin/overview");
   revalidatePath("/admin/settings");
+}
+
+function formatProductWriteError(message?: string) {
+  if (message?.includes("sold_out")) {
+    return "تعذر حفظ خيار نفذت الكمية. طبّق تحديث قاعدة البيانات ثم أعد المحاولة.";
+  }
+
+  return message || "تعذر حفظ المنتج.";
 }
 
 function revalidateAdminDashboard() {

@@ -12,6 +12,7 @@ export type Database = {
           description: string;
           image_url: string;
           slug: string;
+          sold_out: boolean;
           created_at: string;
         };
         Insert: {
@@ -22,6 +23,7 @@ export type Database = {
           description: string;
           image_url: string;
           slug?: string;
+          sold_out?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["products"]["Insert"]>;
@@ -105,16 +107,16 @@ export type Database = {
         Row: {
           id: string;
           order_id: string;
-          product_id: string;
-          variant_id: string;
+          product_id: string | null;
+          variant_id: string | null;
           quantity: number;
           price: number;
         };
         Insert: {
           id?: string;
           order_id: string;
-          product_id: string;
-          variant_id: string;
+          product_id?: string | null;
+          variant_id?: string | null;
           quantity: number;
           price: number;
         };

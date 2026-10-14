@@ -99,7 +99,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
       "@type": "Offer",
       price: variant.price,
       priceCurrency: "USD",
-      availability: "https://schema.org/InStock",
+      availability: product.sold_out
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
       itemCondition: "https://schema.org/NewCondition",
       url: productUrl,
       name: `${title} ${variant.size_ml}ml`,
@@ -196,7 +198,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </h1>
               <div className="mt-2.5 h-[3px] w-[42px] rounded bg-rawey-gold" />
               <p className="mt-2.5 text-[13.5px] font-semibold text-rawey-muted">
-                متوفر للتوصيل داخل لبنان
+                {product.sold_out ? "نفذت الكمية" : "متوفر للتوصيل داخل لبنان"}
               </p>
               <div className="mt-5">
                 <ProductPurchase product={product} />

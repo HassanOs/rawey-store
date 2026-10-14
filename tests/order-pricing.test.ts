@@ -65,6 +65,27 @@ describe("order pricing", () => {
     expect(priced.ok).toBe(false);
   });
 
+  it("rejects sold out products", () => {
+    const parsed = parseCartPayload([{ productId, variantId, quantity: 1 }]);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const priced = priceCartItems(parsed.items, [
+      {
+        id: variantId,
+        product_id: productId,
+        size_ml: 5,
+        price: 12.5,
+        product: { ...product, sold_out: true }
+      }
+    ]);
+
+    expect(priced.ok).toBe(false);
+    if (priced.ok) return;
+    expect(priced.message).toBe("نفذت كمية أحد المنتجات في السلة.");
+  });
+
   it("rejects inactive historical variants", () => {
     const parsed = parseCartPayload([{ productId, variantId, quantity: 1 }]);
 

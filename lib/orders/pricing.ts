@@ -22,6 +22,7 @@ type ProductSummary = {
   brand_slug?: string | null;
   image_url: string;
   slug?: string | null;
+  sold_out?: boolean | null;
 };
 
 export type CanonicalVariant = {
@@ -97,6 +98,10 @@ export function priceCartItems(items: CanonicalCartLine[], variants: CanonicalVa
 
     if (!product) {
       return { ok: false, message: "تعذر قراءة بيانات أحد المنتجات." };
+    }
+
+    if (product.sold_out) {
+      return { ok: false, message: "نفذت كمية أحد المنتجات في السلة." };
     }
 
     const price = Number(variant.price);

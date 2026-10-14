@@ -23,6 +23,11 @@ export function ProductCard({ product }: { product: ProductWithVariants }) {
       <article className="group overflow-hidden rounded-[28px] border border-[#EDE8DF] bg-white shadow-[0_8px_30px_rgba(26,26,26,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(26,26,26,0.12)]">
         <Link href={href} className="block">
           <div className="relative aspect-square overflow-hidden bg-[#F7F4EF] sm:aspect-[4/5]">
+            {product.sold_out ? (
+              <span className="absolute start-3 top-3 z-10 rounded-full bg-rawey-text px-3 py-1 text-xs font-bold text-white">
+                نفذت الكمية
+              </span>
+            ) : null}
             <div className="absolute inset-4">
               <Image
                 src={product.image_url}

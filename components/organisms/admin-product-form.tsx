@@ -177,6 +177,15 @@ export function AdminProductForm({ product, action }: AdminProductFormProps) {
           ))}
         </div>
       </div>
+      <label className="flex items-center gap-3 rounded-2xl border border-rawey-line bg-rawey-background px-4 py-3 text-sm font-semibold">
+        <input
+          type="checkbox"
+          name="sold_out"
+          defaultChecked={Boolean(product?.sold_out)}
+          className="h-4 w-4 accent-rawey-text"
+        />
+        نفذت الكمية
+      </label>
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? <Loader className="h-4 w-4 animate-spin" /> : null}
         {isPending ? "جاري الحفظ..." : product ? "حفظ التعديلات" : "إضافة المنتج"}

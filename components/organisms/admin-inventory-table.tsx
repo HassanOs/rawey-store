@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { AdminProductForm } from "@/components/organisms/admin-product-form";
@@ -10,6 +10,9 @@ import type { ProductWithVariants } from "@/types/database";
 
 export function InventoryTable({ products }: { products: ProductWithVariants[] }) {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeleting, startDelete] = useTransition();
   const visibleProductIds = useMemo(() => products.map((product) => product.id), [products]);
   const allVisibleSelected = visibleProductIds.length > 0 && visibleProductIds.every((id) => selectedProductIds.includes(id));
 
@@ -33,16 +36,44 @@ export function InventoryTable({ products }: { products: ProductWithVariants[] }
     });
   }
 
+  function handleDelete(productIds: string[]) {
+    setDeleteMessage("");
+    setPendingDeleteId(productIds.length === 1 ? productIds[0] : "bulk");
+    startDelete(async () => {
+      const result = productIds.length === 1
+        ? await deleteProduct(productIds[0])
+        : await deleteProducts(productIds.reduce((formData, id) => {
+            formData.append("product_id", id);
+            return formData;
+          }, new FormData()));
+
+      setPendingDeleteId(null);
+
+      if (!result.ok) {
+        setDeleteMessage(result.message);
+        return;
+      }
+
+      setSelectedProductIds((current) => current.filter((id) => !productIds.includes(id)));
+    });
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-rawey-line bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-rawey-line p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold">{products.length} منتج في هذه الصفحة</p>
-        <form action={deleteProducts} className="flex flex-wrap items-center gap-2">
-          {selectedProductIds.map((id) => <input key={id} type="hidden" name="product_id" value={id} />)}
-          <Button type="submit" variant="danger" size="sm" disabled={!selectedProductIds.length}>
-            حذف المحدد
+        <div className="flex flex-wrap items-center gap-2">
+          {deleteMessage ? <p className="text-sm font-semibold text-red-700">{deleteMessage}</p> : null}
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={!selectedProductIds.length || isDeleting}
+            onClick={() => handleDelete(selectedProductIds)}
+          >
+            {pendingDeleteId === "bulk" ? "جاري الحذف..." : "حذف المحدد"}
           </Button>
-        </form>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <div className="grid min-w-[640px] grid-cols-[36px_minmax(180px,1fr)_150px_140px_40px] gap-3 border-b border-rawey-line px-4 py-3 text-xs font-bold text-rawey-muted">
@@ -63,16 +94,31 @@ export function InventoryTable({ products }: { products: ProductWithVariants[] }
                   onClick={(event) => event.stopPropagation()}
                   aria-label={`تحديد ${product.name}`}
                 />
-                <span className="truncate font-semibold">{product.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-semibold">{product.name}</span>
+                  {product.sold_out ? (
+                    <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                      نفذت الكمية
+                    </span>
+                  ) : null}
+                </span>
                 <span className="truncate text-rawey-muted">{product.brand}</span>
                 <span className="text-xs font-semibold text-rawey-muted">{product.variants.length} أحجام</span>
                 <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
               </summary>
               <div className="space-y-3 bg-rawey-background/70 p-4">
                 <AdminProductForm product={product} action={updateProduct.bind(null, product.id)} />
-                <form action={deleteProduct.bind(null, product.id)} className="flex justify-end">
-                  <Button type="submit" variant="danger" size="sm">حذف المنتج</Button>
-                </form>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    disabled={isDeleting}
+                    onClick={() => handleDelete([product.id])}
+                  >
+                    {pendingDeleteId === product.id ? "جاري الحذف..." : "حذف المنتج"}
+                  </Button>
+                </div>
               </div>
             </details>
           ))}

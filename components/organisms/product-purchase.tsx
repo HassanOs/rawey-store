@@ -28,6 +28,8 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
   );
 
   function handleAdd() {
+    if (product.sold_out) return;
+
     addItem({
       productId: product.id,
       slug: product.slug,
@@ -93,11 +95,12 @@ export function ProductPurchase({ product }: { product: ProductWithVariants }) {
 
       <Button
         onClick={handleAdd}
+        disabled={product.sold_out}
         className="h-14 w-full font-bold shadow-[0_14px_30px_rgba(26,26,26,0.22)]"
         size="lg"
       >
         <ShoppingBag className="h-5 w-5" />
-        {added ? "تمت الإضافة" : "أضف إلى السلة"}
+        {product.sold_out ? "نفذت الكمية" : added ? "تمت الإضافة" : "أضف إلى السلة"}
       </Button>
     </div>
   );

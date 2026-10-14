@@ -66,6 +66,7 @@ export const productFormSchema = z.object({
   brand: z.string().min(2, "العلامة مطلوبة").max(80, "اسم العلامة طويل جداً"),
   description: z.string().min(10, "الوصف قصير جداً").max(2000, "الوصف طويل جداً"),
   image_url: z.string().url("رابط الصورة غير صالح"),
+  sold_out: z.boolean().default(false),
   variants: z
     .array(
       z.object({

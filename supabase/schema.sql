@@ -9,11 +9,13 @@ create table if not exists public.products (
   description text not null,
   image_url text not null,
   slug text,
+  sold_out boolean not null default false,
   created_at timestamptz not null default now()
 );
 
 alter table public.products add column if not exists brand_slug text;
 alter table public.products add column if not exists slug text;
+alter table public.products add column if not exists sold_out boolean not null default false;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -103,11 +105,24 @@ notify pgrst, 'reload schema';
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.orders(id) on delete cascade,
-  product_id uuid not null references public.products(id),
-  variant_id uuid not null references public.product_variants(id),
+  product_id uuid references public.products(id) on delete set null,
+  variant_id uuid references public.product_variants(id) on delete set null,
   quantity integer not null check (quantity > 0),
   price numeric(10, 2) not null check (price >= 0)
 );
+
+alter table public.order_items alter column product_id drop not null;
+alter table public.order_items alter column variant_id drop not null;
+alter table public.order_items drop constraint if exists order_items_product_id_fkey;
+alter table public.order_items drop constraint if exists order_items_variant_id_fkey;
+alter table public.order_items
+  add constraint order_items_product_id_fkey
+  foreign key (product_id) references public.products(id) on delete set null;
+alter table public.order_items
+  add constraint order_items_variant_id_fkey
+  foreign key (variant_id) references public.product_variants(id) on delete set null;
+
+notify pgrst, 'reload schema';
 
 create table if not exists public.settings (
   id uuid primary key default gen_random_uuid(),
